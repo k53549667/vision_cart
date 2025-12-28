@@ -1,4 +1,4 @@
-# 🚀 Quick Start - Payment Integration
+﻿# 🚀 Quick Start - Payment Integration
 
 ## What's Been Added?
 
@@ -26,7 +26,7 @@ Your VisionKart website now has a **complete payment system** with 6 payment opt
 
 ### Step 1: Open the Website
 ```
-Open index.html in your browser
+Open index.php in your browser
 ```
 
 ### Step 2: Add Products to Cart

@@ -53,6 +53,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 15px 0;
+    gap: 20px;
 }
 
 .logo h1 {
@@ -60,20 +61,32 @@ body {
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
+    white-space: nowrap;
+}
+
+.nav-menu {
+    flex: 1;
+    display: flex;
+    justify-content: center;
 }
 
 .nav-menu ul {
     display: flex;
     list-style: none;
-    gap: 30px;
+    gap: 25px;
+    margin: 0;
+    padding: 0;
+    align-items: center;
 }
 
 .nav-menu a {
     text-decoration: none;
     color: var(--secondary-color);
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     transition: color 0.3s;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
 }
 
 .nav-menu a:hover {
@@ -83,7 +96,8 @@ body {
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
+    flex-shrink: 0;
 }
 
 .search-box {
@@ -94,7 +108,7 @@ body {
     padding: 8px 35px 8px 15px;
     border: 1px solid #ddd;
     border-radius: 25px;
-    width: 250px;
+    width: 200px;
     outline: none;
     transition: border-color 0.3s;
 }
@@ -113,7 +127,8 @@ body {
 
 .action-icons {
     display: flex;
-    gap: 20px;
+    align-items: center;
+    gap: 15px;
 }
 
 .icon-link {

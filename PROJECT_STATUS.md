@@ -1,4 +1,4 @@
-# 📊 VisionKart Project Status Report
+﻿# 📊 VisionKart Project Status Report
 **Date:** December 28, 2025
 
 ---
@@ -97,9 +97,8 @@
 - [x] Orders table
 - [x] Cart table
 - [x] Categories table
-- [x] Customers table
 - [x] Purchases table
-- [x] Users table
+- [x] Users table (handles both customers and admin users)
 - [x] User_addresses table
 - [x] PHP API endpoints (RESTful)
 - [x] Database seeding scripts
@@ -239,7 +238,7 @@
 ### **HIGH PRIORITY** 🔴
 
 1. **Test Category Sections** (30 mins)
-   - Open index.html and test navigation
+   - Open index.php and test navigation
    - Verify sunglasses and kids products load
    - Check if categories exist in database
 

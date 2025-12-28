@@ -30,13 +30,13 @@ try {
     echo "✗ Orders API test failed: " . $e->getMessage() . "\n";
 }
 
-// Test customers API
-echo "\nTesting Customers API:\n";
+// Test users table (customers are now stored in users table)
+echo "\nTesting Users API (includes customers):\n";
 try {
-    $customers = getRows("SELECT COUNT(*) as count FROM customers");
-    echo "✓ Customers table accessible, count: " . $customers[0]['count'] . "\n";
+    $users = getRows("SELECT COUNT(*) as count FROM users WHERE role = 'customer'");
+    echo "✓ Users table accessible, customer count: " . $users[0]['count'] . "\n";
 } catch (Exception $e) {
-    echo "✗ Customers API test failed: " . $e->getMessage() . "\n";
+    echo "✗ Users API test failed: " . $e->getMessage() . "\n";
 }
 
 // Test purchases API

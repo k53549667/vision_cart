@@ -1,4 +1,4 @@
-# ✅ Database Integration - SUCCESS
+﻿# ✅ Database Integration - SUCCESS
 
 ## What Was Done
 
@@ -41,7 +41,7 @@ php test_database.php
 **Result:** All tables accessible, 6 products in database
 
 ### 3. Frontend Test ✅
-**Visit:** http://localhost/vini/index.html
+**Visit:** http://localhost/vini/index.php
 **Expected:** Products load from database with loading indicator
 
 ## 📊 Current Database Products
@@ -73,7 +73,7 @@ The admin panel is already connected to the database:
 ### Test Steps:
 1. Open http://localhost/vini/admin.html (login: admin/admin123)
 2. Add a new product in Products section
-3. Open http://localhost/vini/index.html
+3. Open http://localhost/vini/index.php
 4. See the new product displayed!
 
 ## 🎨 Data Transformation

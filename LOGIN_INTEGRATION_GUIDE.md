@@ -1,4 +1,4 @@
-# ✅ Login & Registration Integration - Complete!
+﻿# ✅ Login & Registration Integration - Complete!
 
 ## 🎯 What Was Done
 
@@ -8,7 +8,7 @@ Successfully integrated login and registration pages with the VisionKart fronten
 
 ## 🔗 Navigation Integration
 
-### **Header Navigation** (index.html)
+### **Header Navigation** (index.php)
 
 ✅ **Login Icon** - Click to go to login page  
 ✅ **Sign Up Button** - Prominent button in header to register  
@@ -67,7 +67,7 @@ Header: [Phone Icon] [Username ▼] [Wishlist] [Cart]
 
 ## 📁 Files Updated
 
-### 1. **index.html** ✅
+### 1. **index.php** ✅
 - Added **Sign Up button** next to login icon
 - Removed old login/register modals (no longer needed)
 - Added new styling for auth buttons
@@ -119,7 +119,7 @@ Header: [Phone Icon] [Username ▼] [Wishlist] [Cart]
 
 1. **Open Homepage**
    ```
-   http://localhost/vini/index.html
+   http://localhost/vini/index.php
    ```
 
 2. **Look at Header - You should see:**
@@ -237,7 +237,7 @@ Your VisionKart frontend now has:
 
 Open your browser and test:
 
-1. **Homepage**: http://localhost/vini/index.html
+1. **Homepage**: http://localhost/vini/index.php
 2. Click **"Sign Up"** → Should go to register page
 3. Click **User Icon** → Should go to login page
 4. Register/Login → Should return to homepage with your name showing

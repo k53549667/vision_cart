@@ -1,8 +1,18 @@
 <?php
+// Suppress HTML error output for JSON API
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 require_once 'config.php';
 
@@ -182,21 +192,45 @@ function updateProduct($id) {
 }
 
 function deleteProduct($id) {
-    // Get product subcategory before deletion
-    $product = getRow("SELECT subcategory FROM products WHERE id = ?", [$id]);
-
-    $result = executeQuery("DELETE FROM products WHERE id = ?", [$id]);
-
-    if ($result) {
-        // Update category product count
-        if ($product && !empty($product['subcategory'])) {
-            executeQuery("UPDATE categories SET products_count = GREATEST(products_count - 1, 0) WHERE name = ?", [$product['subcategory']]);
+    try {
+        // Check if product is referenced in order_items
+        $orderCheck = getRow("SELECT COUNT(*) as count FROM order_items WHERE product_id = ?", [$id]);
+        if ($orderCheck && $orderCheck['count'] > 0) {
+            // Product has orders - soft delete by setting status to 'deleted' instead
+            $result = executeQuery("UPDATE products SET status = 'deleted' WHERE id = ?", [$id]);
+            if ($result) {
+                // Update category product count
+                $product = getRow("SELECT subcategory FROM products WHERE id = ?", [$id]);
+                if ($product && !empty($product['subcategory'])) {
+                    executeQuery("UPDATE categories SET products_count = GREATEST(products_count - 1, 0) WHERE name = ?", [$product['subcategory']]);
+                }
+                echo json_encode(['success' => true, 'message' => 'Product archived (has order history)']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to archive product']);
+            }
+            return;
         }
+        
+        // Get product subcategory before deletion
+        $product = getRow("SELECT subcategory FROM products WHERE id = ?", [$id]);
 
-        echo json_encode(['success' => true]);
-    } else {
+        $result = executeQuery("DELETE FROM products WHERE id = ?", [$id]);
+
+        if ($result) {
+            // Update category product count
+            if ($product && !empty($product['subcategory'])) {
+                executeQuery("UPDATE categories SET products_count = GREATEST(products_count - 1, 0) WHERE name = ?", [$product['subcategory']]);
+            }
+
+            echo json_encode(['success' => true]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to delete product']);
+        }
+    } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['error' => 'Failed to delete product']);
+        echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
     }
 }
 

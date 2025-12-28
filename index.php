@@ -124,7 +124,7 @@
                         <a href="#" class="icon-link"><i class="fas fa-phone"></i></a>
                         <div class="auth-buttons" id="authContainer">
                             <a href="login.php" class="icon-link" id="loginBtn" title="Login"><i class="fas fa-user"></i></a>
-                            <a href="register.php" class="signup-btn" id="signupBtn">Sign Up</a>
+                            <a href="login.php" class="signup-btn" id="signupBtn">Sign In</a>
                         </div>
                         <a href="#" class="icon-link wishlist-icon" id="wishlistBtn">
                             <i class="fas fa-heart"></i>

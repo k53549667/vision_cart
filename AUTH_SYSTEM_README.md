@@ -1,4 +1,4 @@
-# 🔐 User Authentication System - Implementation Complete
+﻿# 🔐 User Authentication System - Implementation Complete
 
 ## ✅ What Has Been Implemented
 
@@ -104,7 +104,7 @@ Expected output:
 ```
 
 ### Step 2: Test the System
-1. Open `http://localhost/vini/index.html`
+1. Open `http://localhost/vini/index.php`
 2. Click on the user icon in the header
 3. You'll be redirected to the login page
 4. Try registering a new account or use the admin account

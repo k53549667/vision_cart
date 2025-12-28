@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -27,13 +27,13 @@
             <div class="container">
                 <div class="header-content">
                     <div class="logo">
-                        <a href="index.html">
+                        <a href="index.php">
                             <h1>VisionKart</h1>
                         </a>
                     </div>
                     <nav class="nav-menu">
                         <ul>
-                            <li><a href="index.html">HOME</a></li>
+                            <li><a href="index.php">HOME</a></li>
                             <li><a href="#">EYEGLASSES</a></li>
                             <li><a href="#">SUNGLASSES</a></li>
                             <li><a href="#">CONTACT LENSES</a></li>
@@ -63,7 +63,7 @@
     <!-- Breadcrumb -->
     <section class="breadcrumb">
         <div class="container">
-            <a href="index.html">Home</a> / <a href="#">Eyeglasses</a> / <span id="productName">Vincent Chase Classic Round</span>
+            <a href="index.php">Home</a> / <a href="#">Eyeglasses</a> / <span id="productName">Vincent Chase Classic Round</span>
         </div>
     </section>
 
@@ -405,7 +405,7 @@
         </div>
     </footer>
 
-    <!-- Cart Sidebar (same as index.html) -->
+    <!-- Cart Sidebar (same as index.php) -->
     <div class="cart-sidebar" id="cartSidebar" style="position: fixed; top: 0; right: -400px; width: 400px; height: 100vh; background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.3); z-index: 10001; transition: right 0.3s ease;">
         <div class="cart-header" style="padding: 20px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; color: #333; font-size: 22px;">Shopping Cart</h3>

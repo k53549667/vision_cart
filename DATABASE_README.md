@@ -29,10 +29,14 @@ The database `visionkart_db` contains the following tables:
 - **products**: Product catalog with pricing, inventory, and details
 - **orders**: Customer orders with status tracking
 - **order_items**: Individual items within orders
-- **customers**: Customer information and purchase history
+- **users**: User accounts (customers and admins with role-based access)
+- **user_addresses**: Customer shipping addresses
+- **user_sessions**: Session management for cart persistence
 - **purchases**: Inventory purchase records
 - **categories**: Product categories
-- **admin_users**: Admin panel access (default: admin/admin123)
+- **cart**: Shopping cart items
+- **wishlist**: Wishlist items
+- **admin_users**: Legacy admin panel access (default: admin/admin123)
 
 ### API Endpoints
 

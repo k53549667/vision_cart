@@ -260,7 +260,7 @@ curl http://localhost/vini/api_cart.php?action=list
 user_sessions (Session Management)
 ├── id (PK)
 ├── session_id (UNIQUE)
-├── user_id (FK to customers - for future)
+├── user_id (FK to users)
 ├── created_at
 ├── updated_at
 └── expires_at (30 days)

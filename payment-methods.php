@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -390,7 +390,7 @@
         <div class="cta-section">
             <h2>Ready to Shop?</h2>
             <p>Choose your perfect eyewear and checkout with your preferred payment method</p>
-            <a href="index.html" class="cta-button">
+            <a href="index.php" class="cta-button">
                 <i class="fas fa-shopping-bag"></i> Start Shopping
             </a>
             <a href="checkout.php" class="cta-button" style="background: linear-gradient(135deg, #667eea, #764ba2); margin-left: 15px;">

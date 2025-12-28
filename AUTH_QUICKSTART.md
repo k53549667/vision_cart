@@ -1,4 +1,4 @@
-# 🚀 Quick Start - User Authentication System
+﻿# 🚀 Quick Start - User Authentication System
 
 ## ✅ Setup Complete!
 
@@ -67,7 +67,7 @@ Your VisionKart authentication system is now installed and ready to use!
 
 | Page | URL | Description |
 |------|-----|-------------|
-| Home | `index.html` | Main website with auth integration |
+| Home | `index.php` | Main website with auth integration |
 | Login | `login.html` | User login page |
 | Register | `register.html` | New user registration |
 | Test Auth | `test-auth.html` | API testing tool |

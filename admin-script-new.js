@@ -580,11 +580,15 @@ async function deleteProduct(id) {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
-        await apiCall(`api_products.php?id=${id}`, {
+        const result = await apiCall(`api_products.php?id=${id}`, {
             method: 'DELETE'
         });
 
-        showNotification('Product deleted successfully!', 'success');
+        if (result.message) {
+            showNotification(result.message, 'success');
+        } else {
+            showNotification('Product deleted successfully!', 'success');
+        }
         loadProductsTable();
         updateDashboardStats();
 

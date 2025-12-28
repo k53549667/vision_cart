@@ -1,4 +1,4 @@
-# VisionKart - Premium Eyewear E-commerce Website
+﻿# VisionKart - Premium Eyewear E-commerce Website
 
 A modern, responsive e-commerce website inspired by Lenskart, featuring eyewear products including eyeglasses, sunglasses, and contact lenses.
 
@@ -98,7 +98,7 @@ A modern, responsive e-commerce website inspired by Lenskart, featuring eyewear 
 
 ## Getting Started
 
-1. Open `index.html` in a web browser
+1. Open `index.php` in a web browser
 2. Browse through different sections
 3. Use the search bar to filter products
 4. Click on products to add them to cart
@@ -107,7 +107,7 @@ A modern, responsive e-commerce website inspired by Lenskart, featuring eyewear 
 ## File Structure
 ```
 vini/
-├── index.html              # Main HTML file
+├── index.php              # Main HTML file
 ├── checkout.html           # Dedicated checkout page (NEW!)
 ├── payment-methods.html    # Payment options showcase (NEW!)
 ├── style.css              # Main styling

@@ -90,66 +90,60 @@ foreach ($sampleProducts as $product) {
     }
 }
 
-// Sample customers
+// Sample customers - now seeded into users table
 $sampleCustomers = [
     [
-        'name' => 'John Doe',
+        'first_name' => 'John',
+        'last_name' => 'Doe',
         'email' => 'john@example.com',
         'phone' => '+91 9876543210',
-        'orders_count' => 5,
-        'total_spent' => 9500.00,
-        'joined_date' => '2024-01-15'
+        'password' => password_hash('customer123', PASSWORD_DEFAULT)
     ],
     [
-        'name' => 'Jane Smith',
+        'first_name' => 'Jane',
+        'last_name' => 'Smith',
         'email' => 'jane@example.com',
         'phone' => '+91 9876543211',
-        'orders_count' => 3,
-        'total_spent' => 5700.00,
-        'joined_date' => '2024-02-20'
+        'password' => password_hash('customer123', PASSWORD_DEFAULT)
     ],
     [
-        'name' => 'Mike Johnson',
+        'first_name' => 'Mike',
+        'last_name' => 'Johnson',
         'email' => 'mike@example.com',
         'phone' => '+91 9876543212',
-        'orders_count' => 7,
-        'total_spent' => 13300.00,
-        'joined_date' => '2024-01-10'
+        'password' => password_hash('customer123', PASSWORD_DEFAULT)
     ],
     [
-        'name' => 'Sarah Williams',
+        'first_name' => 'Sarah',
+        'last_name' => 'Williams',
         'email' => 'sarah@example.com',
         'phone' => '+91 9876543213',
-        'orders_count' => 2,
-        'total_spent' => 3800.00,
-        'joined_date' => '2024-03-05'
+        'password' => password_hash('customer123', PASSWORD_DEFAULT)
     ],
     [
-        'name' => 'David Brown',
+        'first_name' => 'David',
+        'last_name' => 'Brown',
         'email' => 'david@example.com',
         'phone' => '+91 9876543214',
-        'orders_count' => 4,
-        'total_spent' => 7600.00,
-        'joined_date' => '2024-02-28'
+        'password' => password_hash('customer123', PASSWORD_DEFAULT)
     ]
 ];
 
-// Insert customers
+// Insert customers into users table
 foreach ($sampleCustomers as $customer) {
-    $check = getRow("SELECT id FROM customers WHERE email = ?", [$customer['email']]);
+    $check = getRow("SELECT id FROM users WHERE email = ?", [$customer['email']]);
     if (!$check) {
-        $sql = "INSERT INTO customers (name, email, phone, orders_count, total_spent, joined_date)
-                VALUES (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (first_name, last_name, email, phone, password, role, status)
+                VALUES (?, ?, ?, ?, ?, 'customer', 'active')";
         $params = [
-            $customer['name'],
+            $customer['first_name'],
+            $customer['last_name'],
             $customer['email'],
             $customer['phone'],
-            $customer['orders_count'],
-            $customer['total_spent'],
-            $customer['joined_date']
+            $customer['password']
         ];
         executeQuery($sql, $params);
-        echo "Added customer: {$customer['name']}\n";
+        echo "Added customer: {$customer['first_name']} {$customer['last_name']}\n";
     }
 }
 

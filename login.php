@@ -317,7 +317,7 @@
             </div>
 
             <div class="back-home">
-                <a href="index.html"><i class="fas fa-arrow-left"></i> Back to Home</a>
+                <a href="index.php"><i class="fas fa-arrow-left"></i> Back to Home</a>
             </div>
         </div>
     </div>
@@ -429,7 +429,7 @@
                 
                 if (data.authenticated) {
                     const redirect = new URLSearchParams(window.location.search).get('redirect');
-                    window.location.href = redirect || 'index.html';
+                    window.location.href = redirect || 'index.php';
                 }
             } catch (error) {
                 console.error('Session check failed:', error);

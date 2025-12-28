@@ -54,22 +54,29 @@ $tables[] = "CREATE TABLE IF NOT EXISTS categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )";
 
-// Customers table
-$tables[] = "CREATE TABLE IF NOT EXISTS customers (
+// Users table (handles both customers and admins)
+$tables[] = "CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
-    orders_count INT DEFAULT 0,
-    total_spent DECIMAL(10,2) DEFAULT 0.00,
-    joined_date DATE,
+    role ENUM('customer', 'admin') DEFAULT 'customer',
+    email_verified TINYINT(1) DEFAULT 0,
+    verification_token VARCHAR(100),
+    reset_token VARCHAR(100),
+    reset_token_expires DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL,
+    status ENUM('active', 'inactive', 'suspended') DEFAULT 'active'
 )";
 
 // Orders table
 $tables[] = "CREATE TABLE IF NOT EXISTS orders (
     id VARCHAR(20) PRIMARY KEY,
+    user_id INT,
     customer_id INT,
     customer_name VARCHAR(255),
     products TEXT,
@@ -80,7 +87,7 @@ $tables[] = "CREATE TABLE IF NOT EXISTS orders (
     shipping_address TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 )";
 
 // Order items table (for detailed order contents)
