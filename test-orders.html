@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Orders</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+        }
+        .check { background: #2196F3; }
+        .add { background: #4CAF50; }
+        .clear { background: #f44336; }
+        .admin { background: #00bac7; }
+        #output {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        pre {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛒 VisionKart - Test Orders System</h1>
+    
+    <div>
+        <button class="check" onclick="checkOrders()">📊 Check Orders</button>
+        <button class="add" onclick="addTestOrder()">➕ Add Test Order</button>
+        <button class="clear" onclick="clearOrders()">🗑️ Clear All Orders</button>
+        <button class="admin" onclick="openAdmin()">👨‍💼 Open Admin Panel</button>
+    </div>
+    
+    <div id="output"></div>
+
+    <script>
+        function checkOrders() {
+            const orders = JSON.parse(localStorage.getItem('visionkart_orders') || '[]');
+            const users = JSON.parse(localStorage.getItem('visionkart_users') || '[]');
+            
+            document.getElementById('output').innerHTML = `
+                <h2>📦 Orders in LocalStorage: ${orders.length}</h2>
+                <pre>${JSON.stringify(orders, null, 2)}</pre>
+                
+                <h2>👥 Registered Users: ${users.length}</h2>
+                <pre>${JSON.stringify(users, null, 2)}</pre>
+            `;
+        }
+
+        function addTestOrder() {
+            const orders = JSON.parse(localStorage.getItem('visionkart_orders') || '[]');
+            const testOrder = {
+                id: Date.now(),
+                customer: "testuser@visionkart.com",
+                items: [
+                    { 
+                        id: 1, 
+                        name: "Vincent Chase Round Eyeglasses", 
+                        quantity: 2, 
+                        price: 1999,
+                        image: "https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=100"
+                    },
+                    { 
+                        id: 2, 
+                        name: "Cat-Eye Transparent Frames", 
+                        quantity: 1, 
+                        price: 1799,
+                        image: "https://images.unsplash.com/photo-1577803645773-f96470509666?w=100"
+                    }
+                ],
+                total: 5797,
+                date: new Date().toISOString(),
+                status: "Pending"
+            };
+            orders.push(testOrder);
+            localStorage.setItem('visionkart_orders', JSON.stringify(orders));
+            alert('✅ Test order added successfully!\n\nOrder ID: #' + testOrder.id + '\nTotal: ₹5,797\n\nNow open the Admin Panel to see it!');
+            checkOrders();
+        }
+
+        function clearOrders() {
+            if (confirm('Are you sure you want to clear all orders?')) {
+                localStorage.removeItem('visionkart_orders');
+                alert('All orders cleared!');
+                checkOrders();
+            }
+        }
+
+        function openAdmin() {
+            window.open('admin.html', '_blank');
+        }
+
+        // Auto-check on load
+        window.onload = checkOrders;
+    </script>
+</body>
+</html>

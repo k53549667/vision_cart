@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protected Page Test - VisionKart</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #00bac7; }
+        .info { 
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Protected Page Test</h1>
+        <p>If you can see this page, you are logged in!</p>
+        
+        <div class="info" id="userInfo">
+            <h3>Loading user information...</h3>
+        </div>
+        
+        <button onclick="window.location.href='index.html'" style="padding: 10px 20px; background: #00bac7; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Go to Home
+        </button>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        // This page requires authentication
+        // If user is not logged in, they will be redirected to login page
+        authManager.requireAuth();
+
+        // Display user information
+        setTimeout(() => {
+            if (authManager.isAuthenticated) {
+                const user = authManager.getUser();
+                document.getElementById('userInfo').innerHTML = `
+                    <h3>✅ Welcome, ${user.name}!</h3>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>User ID:</strong> ${user.id}</p>
+                    <p><strong>Role:</strong> ${user.role}</p>
+                    <p><strong>Status:</strong> Authenticated</p>
+                `;
+            }
+        }, 100);
+    </script>
+</body>
+</html>
