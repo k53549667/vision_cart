@@ -1,0 +1,116 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Orders</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 2px solid #ddd; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; font-size: 16px; }
+        .success { background: #4CAF50; color: white; border: none; }
+        .info { background: #2196F3; color: white; border: none; }
+        .danger { background: #f44336; color: white; border: none; }
+        pre { background: #f5f5f5; padding: 15px; overflow-x: auto; }
+        h2 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>🔍 VisionKart Orders Debug Tool</h1>
+    
+    <div class="section">
+        <h2>📦 Current Orders in LocalStorage</h2>
+        <button class="info" onclick="showOrders()">Show Orders</button>
+        <button class="danger" onclick="clearAllOrders()">Clear All Orders</button>
+        <div id="ordersOutput"></div>
+    </div>
+    
+    <div class="section">
+        <h2>➕ Add Test Order</h2>
+        <button class="success" onclick="addOrder()">Add Sample Order</button>
+        <button class="success" onclick="addMultipleOrders()">Add 5 Orders</button>
+    </div>
+    
+    <div class="section">
+        <h2>🔗 Quick Links</h2>
+        <button class="info" onclick="window.open('admin.html#orders', '_blank')">Open Admin Orders Page</button>
+        <button class="info" onclick="window.open('index.php', '_blank')">Open Main Website</button>
+    </div>
+
+    <script>
+        function showOrders() {
+            const orders = JSON.parse(localStorage.getItem('visionkart_orders') || '[]');
+            const users = JSON.parse(localStorage.getItem('visionkart_users') || '[]');
+            
+            document.getElementById('ordersOutput').innerHTML = `
+                <h3>Total Orders: ${orders.length}</h3>
+                <pre>${JSON.stringify(orders, null, 2)}</pre>
+                <h3>Total Users: ${users.length}</h3>
+                <pre>${JSON.stringify(users, null, 2)}</pre>
+            `;
+        }
+
+        function addOrder() {
+            const orders = JSON.parse(localStorage.getItem('visionkart_orders') || '[]');
+            const orderId = Date.now();
+            const newOrder = {
+                id: orderId,
+                customer: "customer" + Math.floor(Math.random() * 1000) + "@visionkart.com",
+                items: [
+                    {
+                        id: 1,
+                        name: "Vincent Chase Round Eyeglasses",
+                        quantity: Math.floor(Math.random() * 3) + 1,
+                        price: 1999,
+                        image: "https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=100"
+                    }
+                ],
+                total: 1999,
+                date: new Date().toISOString(),
+                status: "Pending"
+            };
+            orders.push(newOrder);
+            localStorage.setItem('visionkart_orders', JSON.stringify(orders));
+            alert('✅ Order #' + orderId + ' added!\n\nNow refresh admin panel to see it.');
+            showOrders();
+        }
+
+        function addMultipleOrders() {
+            const orders = JSON.parse(localStorage.getItem('visionkart_orders') || '[]');
+            const statuses = ['Pending', 'Processing', 'Completed'];
+            
+            for (let i = 0; i < 5; i++) {
+                const orderId = Date.now() + i;
+                orders.push({
+                    id: orderId,
+                    customer: `customer${i}@visionkart.com`,
+                    items: [
+                        {
+                            id: i + 1,
+                            name: `Product ${i + 1}`,
+                            quantity: Math.floor(Math.random() * 3) + 1,
+                            price: 1500 + (i * 200),
+                            image: "https://via.placeholder.com/100"
+                        }
+                    ],
+                    total: 1500 + (i * 200),
+                    date: new Date(Date.now() - (i * 86400000)).toISOString(),
+                    status: statuses[Math.floor(Math.random() * statuses.length)]
+                });
+            }
+            localStorage.setItem('visionkart_orders', JSON.stringify(orders));
+            alert('✅ 5 orders added!\n\nTotal orders: ' + orders.length);
+            showOrders();
+        }
+
+        function clearAllOrders() {
+            if (confirm('⚠️ Are you sure you want to delete ALL orders?')) {
+                localStorage.removeItem('visionkart_orders');
+                alert('🗑️ All orders cleared!');
+                showOrders();
+            }
+        }
+
+        // Auto-show orders on load
+        showOrders();
+    </script>
+</body>
+</html>

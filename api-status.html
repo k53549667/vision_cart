@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionKart - API Status Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #00bac7; text-align: center; margin-bottom: 30px; }
+        .api-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .api-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #ccc;
+        }
+        .api-card.success { border-left-color: #4caf50; }
+        .api-card.error { border-left-color: #f44336; }
+        .api-card.loading { border-left-color: #ff9800; }
+        .api-card h3 { margin: 0 0 10px 0; color: #333; display: flex; align-items: center; gap: 10px; }
+        .api-card h3 i { font-size: 24px; }
+        .api-card .status { font-size: 14px; padding: 5px 12px; border-radius: 15px; display: inline-block; margin-bottom: 10px; }
+        .api-card .status.success { background: #e8f5e9; color: #2e7d32; }
+        .api-card .status.error { background: #ffebee; color: #c62828; }
+        .api-card .status.loading { background: #fff3e0; color: #ef6c00; }
+        .api-card .endpoint { font-family: monospace; background: #f5f5f5; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin: 10px 0; word-break: break-all; }
+        .api-card .response { font-size: 12px; color: #666; max-height: 100px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 6px; margin-top: 10px; }
+        .api-card .count { font-size: 24px; font-weight: bold; color: #00bac7; }
+        .actions { text-align: center; margin-top: 30px; }
+        .btn { padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; margin: 5px; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #00bac7 0%, #008c9a 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,186,199,0.3); }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .summary { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: center; }
+        .summary-stats { display: flex; justify-content: center; gap: 40px; margin-top: 15px; }
+        .summary-stat { text-align: center; }
+        .summary-stat .value { font-size: 32px; font-weight: bold; }
+        .summary-stat .label { font-size: 14px; color: #666; }
+        .summary-stat.success .value { color: #4caf50; }
+        .summary-stat.error .value { color: #f44336; }
+        .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+        .links a { padding: 10px 20px; background: #00bac7; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
+        .links a:hover { background: #008c9a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-server"></i> VisionKart API Status Dashboard</h1>
+        
+        <div class="summary">
+            <h2>System Status</h2>
+            <div class="summary-stats">
+                <div class="summary-stat success">
+                    <div class="value" id="successCount">-</div>
+                    <div class="label">APIs Working</div>
+                </div>
+                <div class="summary-stat error">
+                    <div class="value" id="errorCount">-</div>
+                    <div class="label">APIs Failed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-grid" id="apiGrid">
+            <!-- API cards will be loaded here -->
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="testAllAPIs()">
+                <i class="fas fa-sync-alt"></i> Refresh All
+            </button>
+            <button class="btn btn-secondary" onclick="window.location.href='setup_complete_database.php'">
+                <i class="fas fa-database"></i> Setup Database
+            </button>
+        </div>
+
+        <div class="links">
+            <a href="index.php"><i class="fas fa-home"></i> Home</a>
+            <a href="admin.php"><i class="fas fa-cog"></i> Admin</a>
+            <a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="test-wishlist.html"><i class="fas fa-heart"></i> Test Wishlist</a>
+            <a href="test-cart-api.html"><i class="fas fa-shopping-cart"></i> Test Cart</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+        
+        const apis = [
+            { name: 'Products API', icon: 'fa-box', endpoint: 'api_products.php?action=list', countField: 'length' },
+            { name: 'Categories API', icon: 'fa-tags', endpoint: 'api_categories.php?action=list', countField: 'length' },
+            { name: 'Orders API', icon: 'fa-shopping-bag', endpoint: 'api_orders.php?action=list', countField: 'length' },
+            { name: 'Cart API', icon: 'fa-shopping-cart', endpoint: 'api_cart.php?action=list', countField: 'count' },
+            { name: 'Wishlist API', icon: 'fa-heart', endpoint: 'api_wishlist.php?action=list', countField: 'count' },
+            { name: 'Users API', icon: 'fa-users', endpoint: 'api_users.php?action=check-session', countField: null },
+            { name: 'Auth API', icon: 'fa-lock', endpoint: 'api_auth.php?action=check', countField: null },
+            { name: 'Customers API', icon: 'fa-user-friends', endpoint: 'api_customers.php?action=list', countField: 'length' },
+            { name: 'Purchases API', icon: 'fa-truck', endpoint: 'api_purchases.php?action=list', countField: 'length' }
+        ];
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        async function testAPI(api, index) {
+            const card = document.getElementById(`api-${index}`);
+            card.className = 'api-card loading';
+            card.querySelector('.status').textContent = 'Testing...';
+            card.querySelector('.status').className = 'status loading';
+
+            try {
+                const response = await fetch(`${API_BASE}/${api.endpoint}`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                let count = '-';
+                if (api.countField === 'length' && Array.isArray(data)) {
+                    count = data.length;
+                } else if (api.countField && data[api.countField] !== undefined) {
+                    count = data[api.countField];
+                } else if (data.success !== undefined) {
+                    count = data.success ? '✓' : '✗';
+                }
+
+                card.className = 'api-card success';
+                card.querySelector('.status').textContent = 'Online';
+                card.querySelector('.status').className = 'status success';
+                card.querySelector('.count').textContent = count;
+                card.querySelector('.response').textContent = JSON.stringify(data, null, 2).substring(0, 200) + '...';
+                successCount++;
+            } catch (error) {
+                card.className = 'api-card error';
+                card.querySelector('.status').textContent = 'Error';
+                card.querySelector('.status').className = 'status error';
+                card.querySelector('.count').textContent = '!';
+                card.querySelector('.response').textContent = error.message;
+                errorCount++;
+            }
+
+            updateSummary();
+        }
+
+        function updateSummary() {
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('errorCount').textContent = errorCount;
+        }
+
+        async function testAllAPIs() {
+            successCount = 0;
+            errorCount = 0;
+            
+            const grid = document.getElementById('apiGrid');
+            grid.innerHTML = apis.map((api, i) => `
+                <div class="api-card loading" id="api-${i}">
+                    <h3><i class="fas ${api.icon}"></i> ${api.name}</h3>
+                    <span class="status loading">Testing...</span>
+                    <div class="endpoint">${api.endpoint}</div>
+                    <div class="count">-</div>
+                    <div class="response">Loading...</div>
+                </div>
+            `).join('');
+
+            for (let i = 0; i < apis.length; i++) {
+                await testAPI(apis[i], i);
+            }
+        }
+
+        // Run tests on page load
+        window.onload = testAllAPIs;
+    </script>
+</body>
+</html>

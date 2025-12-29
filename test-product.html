@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Test</title>
+</head>
+<body>
+    <h1>Testing Product ID: <span id="productId"></span></h1>
+    <div id="result"></div>
+    
+    <script>
+        // Get ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        document.getElementById('productId').textContent = id;
+        
+        // Check localStorage
+        const storedProducts = JSON.parse(localStorage.getItem('visionkart_products') || '[]');
+        const deletedIds = JSON.parse(localStorage.getItem('visionkart_deleted_products') || '[]');
+        
+        console.log('Stored Products:', storedProducts);
+        console.log('Deleted IDs:', deletedIds);
+        console.log('Looking for ID:', id);
+        
+        const product = storedProducts.find(p => p.id == id);
+        
+        const resultDiv = document.getElementById('result');
+        if (product) {
+            resultDiv.innerHTML = `
+                <h2 style="color: green;">✅ PRODUCT FOUND!</h2>
+                <pre>${JSON.stringify(product, null, 2)}</pre>
+                <button onclick="window.location.href='product-detail.html?id=${id}'">Go to Detail Page</button>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <h2 style="color: red;">❌ PRODUCT NOT FOUND</h2>
+                <p>Total products in storage: ${storedProducts.length}</p>
+                <p>All product IDs: ${storedProducts.map(p => p.id).join(', ')}</p>
+                <h3>All Products:</h3>
+                <pre>${JSON.stringify(storedProducts, null, 2)}</pre>
+            `;
+        }
+    </script>
+</body>
+</html>

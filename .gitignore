@@ -1,0 +1,18 @@
+# Nested git repository
+vision_cart/
+
+# Videos folder (large files)
+videos/
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart API Test - VisionKart</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 36px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .cart-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .cart-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+        .cart-item h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .cart-item p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .cart-summary {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .cart-summary h3 {
+            margin-bottom: 15px;
+        }
+        .cart-summary p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            width: 80px;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛒 Cart API Test Dashboard</h1>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2>Quick Actions</h2>
+            <button class="btn" onclick="getCart()">📋 Get Cart</button>
+            <button class="btn" onclick="getCartCount()">🔢 Get Count</button>
+            <button class="btn btn-danger" onclick="clearCart()">🗑️ Clear Cart</button>
+            <button class="btn" onclick="addRandomProduct()">➕ Add Random Product</button>
+        </div>
+
+        <!-- Add Product -->
+        <div class="card">
+            <h2>Add Product to Cart</h2>
+            <label>Product ID: <input type="number" id="productId" value="1" min="1" max="6"></label>
+            <label>Quantity: <input type="number" id="quantity" value="1" min="1"></label>
+            <button class="btn" onclick="addToCart()">Add to Cart</button>
+            <div id="addResponse" class="response" style="display:none;"></div>
+        </div>
+
+        <!-- Cart Display -->
+        <div class="card">
+            <h2>Current Cart</h2>
+            <div id="cartDisplay">
+                <p style="color: #999;">Click "Get Cart" to load items</p>
+            </div>
+        </div>
+
+        <!-- API Response -->
+        <div class="card">
+            <h2>API Response Log</h2>
+            <div id="responseLog" class="response">
+                Waiting for API call...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'api_cart.php';
+
+        function logResponse(data, endpoint) {
+            const log = document.getElementById('responseLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.textContent = `[${timestamp}] ${endpoint}\n\n` + JSON.stringify(data, null, 2);
+        }
+
+        async function getCart() {
+            try {
+                const response = await fetch(`${API_URL}?action=list`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                logResponse(data, 'GET /api_cart.php?action=list');
+                displayCart(data);
+            } catch (error) {
+                logResponse({error: error.message}, 'GET Cart - Error');
+            }
+        }
+
+        async function getCartCount() {
+            try {
+                const response = await fetch(`${API_URL}?action=count`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                logResponse(data, 'GET /api_cart.php?action=count');
+                alert(`Cart Count: ${data.count}`);
+            } catch (error) {
+                logResponse({error: error.message}, 'GET Count - Error');
+            }
+        }
+
+        async function addToCart() {
+            const productId = parseInt(document.getElementById('productId').value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            try {
+                const response = await fetch(`${API_URL}?action=add`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({product_id: productId, quantity: quantity})
+                });
+                const data = await response.json();
+                logResponse(data, 'POST /api_cart.php?action=add');
+                
+                const addResponse = document.getElementById('addResponse');
+                addResponse.style.display = 'block';
+                addResponse.className = 'response ' + (data.success ? 'success' : 'error');
+                addResponse.textContent = JSON.stringify(data, null, 2);
+
+                if (data.success) {
+                    setTimeout(() => getCart(), 500);
+                }
+            } catch (error) {
+                logResponse({error: error.message}, 'POST Add - Error');
+            }
+        }
+
+        async function clearCart() {
+            if (!confirm('Clear entire cart?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}?action=clear`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                logResponse(data, 'DELETE /api_cart.php?action=clear');
+                alert(data.message);
+                getCart();
+            } catch (error) {
+                logResponse({error: error.message}, 'DELETE Clear - Error');
+            }
+        }
+
+        async function removeItem(cartId) {
+            try {
+                const response = await fetch(`${API_URL}?action=remove&id=${cartId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                logResponse(data, `DELETE /api_cart.php?action=remove&id=${cartId}`);
+                getCart();
+            } catch (error) {
+                logResponse({error: error.message}, 'DELETE Remove - Error');
+            }
+        }
+
+        function addRandomProduct() {
+            const randomId = Math.floor(Math.random() * 6) + 1;
+            document.getElementById('productId').value = randomId;
+            document.getElementById('quantity').value = Math.floor(Math.random() * 3) + 1;
+            addToCart();
+        }
+
+        function displayCart(data) {
+            const display = document.getElementById('cartDisplay');
+            
+            if (!data.success || data.items.length === 0) {
+                display.innerHTML = '<p style="color: #999;">Cart is empty</p>';
+                return;
+            }
+
+            let html = '<div class="cart-items">';
+            
+            data.items.forEach(item => {
+                html += `
+                    <div class="cart-item">
+                        <h3>${item.name}</h3>
+                        <p><strong>Brand:</strong> ${item.brand}</p>
+                        <p><strong>Price:</strong> ₹${item.price}</p>
+                        <p><strong>Quantity:</strong> ${item.quantity}</p>
+                        <p><strong>Subtotal:</strong> ₹${item.item_total}</p>
+                        <p><strong>GST (${item.gst}%):</strong> ₹${item.gst_amount}</p>
+                        <p><strong>Total:</strong> ₹${item.item_total_with_gst}</p>
+                        <button class="btn btn-danger" onclick="removeItem(${item.cart_id})">Remove</button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            html += `
+                <div class="cart-summary">
+                    <h3>Cart Summary</h3>
+                    <p><strong>Total Items:</strong> ${data.count}</p>
+                    <p><strong>Total Quantity:</strong> ${data.total_quantity}</p>
+                    <p><strong>Subtotal:</strong> ₹${data.subtotal}</p>
+                    <p><strong>GST:</strong> ₹${data.gst}</p>
+                    <p><strong>Total:</strong> ₹${data.total}</p>
+                    <p style="font-size: 14px; margin-top: 10px; opacity: 0.8;">Session: ${data.session_id}</p>
+                </div>
+            `;
+            
+            display.innerHTML = html;
+        }
+
+        // Auto-load cart on page load
+        window.addEventListener('load', () => {
+            getCart();
+        });
+    </script>
+</body>
+</html>

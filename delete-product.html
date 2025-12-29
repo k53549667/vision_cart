@@ -1,0 +1,119 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Delete Specific Product</title>
+    <style>
+        body { font-family: Arial; padding: 30px; max-width: 1000px; margin: 0 auto; }
+        h1 { color: #333; }
+        .product { border: 2px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; display: flex; align-items: center; gap: 15px; }
+        .product img { width: 100px; height: 100px; object-fit: cover; border-radius: 5px; }
+        .product-info { flex: 1; }
+        .product-name { font-size: 18px; font-weight: bold; color: #333; }
+        .product-id { font-size: 12px; color: #666; }
+        button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-size: 14px; }
+        .delete-btn { background: #f44336; color: white; }
+        .restore-btn { background: #4CAF50; color: white; }
+        .section { margin: 30px 0; }
+        .deleted { opacity: 0.5; border-color: #f44336; }
+    </style>
+</head>
+<body>
+    <h1>🗑️ Product Management Tool</h1>
+    
+    <div class="section">
+        <h2>All Products</h2>
+        <div id="allProducts"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Deleted Products</h2>
+        <div id="deletedProducts"></div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px;">
+        <button onclick="window.open('index.php', '_blank')" style="background: #00bac7; color: white; padding: 12px 24px;">
+            Open Website
+        </button>
+    </div>
+
+    <script>
+        function loadAllProducts() {
+            const storedProducts = JSON.parse(localStorage.getItem('visionkart_products') || '[]');
+            const deletedIds = JSON.parse(localStorage.getItem('visionkart_deleted_products') || '[]');
+            const allProductsDiv = document.getElementById('allProducts');
+            
+            if (storedProducts.length === 0) {
+                allProductsDiv.innerHTML = '<p>No products in localStorage</p>';
+                return;
+            }
+            
+            allProductsDiv.innerHTML = '';
+            storedProducts.forEach(product => {
+                const isDeleted = deletedIds.includes(product.id);
+                const div = document.createElement('div');
+                div.className = 'product' + (isDeleted ? ' deleted' : '');
+                div.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}">
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-id">ID: ${product.id}</div>
+                        <div>Type: ${product.type} | Price: ₹${product.price}</div>
+                        ${isDeleted ? '<div style="color: #f44336;">❌ DELETED</div>' : ''}
+                    </div>
+                    <button class="${isDeleted ? 'restore-btn' : 'delete-btn'}" onclick="${isDeleted ? 'restoreProduct(' + product.id + ')' : 'deleteProduct(' + product.id + ')'}">
+                        ${isDeleted ? 'Restore' : 'Delete'}
+                    </button>
+                `;
+                allProductsDiv.appendChild(div);
+            });
+        }
+
+        function deleteProduct(id) {
+            const deletedIds = JSON.parse(localStorage.getItem('visionkart_deleted_products') || '[]');
+            if (!deletedIds.includes(id)) {
+                deletedIds.push(id);
+                localStorage.setItem('visionkart_deleted_products', JSON.stringify(deletedIds));
+                alert('Product marked as deleted! Refresh the website to see changes.');
+                loadAllProducts();
+                loadDeletedProducts();
+            }
+        }
+
+        function restoreProduct(id) {
+            const deletedIds = JSON.parse(localStorage.getItem('visionkart_deleted_products') || '[]');
+            const index = deletedIds.indexOf(id);
+            if (index > -1) {
+                deletedIds.splice(index, 1);
+                localStorage.setItem('visionkart_deleted_products', JSON.stringify(deletedIds));
+                alert('Product restored!');
+                loadAllProducts();
+                loadDeletedProducts();
+            }
+        }
+
+        function loadDeletedProducts() {
+            const deletedIds = JSON.parse(localStorage.getItem('visionkart_deleted_products') || '[]');
+            const deletedProductsDiv = document.getElementById('deletedProducts');
+            
+            deletedProductsDiv.innerHTML = `
+                <p>Total deleted: ${deletedIds.length}</p>
+                <p>Deleted IDs: ${deletedIds.join(', ') || 'None'}</p>
+                ${deletedIds.length > 0 ? '<button onclick="clearAllDeleted()" style="background: #f44336; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Clear All Deleted</button>' : ''}
+            `;
+        }
+
+        function clearAllDeleted() {
+            if (confirm('Restore all deleted products?')) {
+                localStorage.removeItem('visionkart_deleted_products');
+                alert('All products restored!');
+                loadAllProducts();
+                loadDeletedProducts();
+            }
+        }
+
+        // Load on page load
+        loadAllProducts();
+        loadDeletedProducts();
+    </script>
+</body>
+</html>
