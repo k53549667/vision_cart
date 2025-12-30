@@ -218,8 +218,8 @@ async function addToCart(productId) {
             addToCartBtn.textContent = 'Adding...';
         }
         
-        // Call API to add to cart
-        const response = await fetch(`api_cart.php?action=add`, {
+        // First, try to add using the product ID (for database products)
+        let response = await fetch(`api_cart.php?action=add`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -229,7 +229,60 @@ async function addToCart(productId) {
             })
         });
         
-        const data = await response.json();
+        let data = await response.json();
+        
+        // If product not found in database, try to find it locally and sync to database first
+        if (!data.success && data.error === 'Product not found') {
+            console.log('Product not found in database, attempting to sync from local storage...');
+            
+            // Find the product in local sources
+            const localProduct = await findProductById(productId);
+            
+            if (localProduct) {
+                // Try to create the product in the database first
+                const createResponse = await fetch('api_products.php?action=create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: localProduct.name,
+                        category: localProduct.type || 'eyeglasses',
+                        subcategory: localProduct.category || 'round',
+                        brand: localProduct.brand || 'VisionKart',
+                        price: localProduct.price,
+                        originalPrice: localProduct.originalPrice || localProduct.price * 2,
+                        gst: localProduct.gst || 12,
+                        stock: localProduct.stock || 100,
+                        status: 'active',
+                        image: localProduct.image,
+                        frametype: localProduct.frameType || 'full-rim',
+                        color: localProduct.color || '',
+                        description: localProduct.description || ''
+                    })
+                });
+                
+                const createResult = await createResponse.json();
+                
+                if (createResult.success && createResult.id) {
+                    // Product created in database, now add to cart with new ID
+                    response = await fetch(`api_cart.php?action=add`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            product_id: createResult.id,
+                            quantity: 1
+                        })
+                    });
+                    data = await response.json();
+                    
+                    if (data.success) {
+                        console.log('Product synced to database and added to cart with new ID:', createResult.id);
+                    }
+                } else {
+                    console.error('Failed to sync product to database:', createResult.error);
+                }
+            }
+        }
         
         if (data.success) {
             // Reload cart from server

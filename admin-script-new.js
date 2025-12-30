@@ -89,13 +89,26 @@ async function loadCategories() {
     }
 }
 
-async function loadCategories() {
+// Populate subcategory dropdown from database
+async function populateSubcategoryDropdown() {
+    const subCategorySelect = document.getElementById('subCategory');
+    if (!subCategorySelect) return;
+    
     try {
-        cachedCategories = await apiCall('api_products.php?action=categories');
-        return cachedCategories;
+        const categories = await loadCategories();
+        
+        // Keep the first "Select" option
+        subCategorySelect.innerHTML = '<option value="">Select Sub Category</option>';
+        
+        // Add categories from database
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = cat.name;
+            subCategorySelect.appendChild(option);
+        });
     } catch (error) {
-        console.error('Failed to load categories:', error);
-        return [];
+        console.error('Failed to populate subcategory dropdown:', error);
     }
 }
 
@@ -421,6 +434,7 @@ async function loadCategoriesTable() {
                 <div class="category-info">
                     <h3>${category.name}</h3>
                     <p>${category.products_count || 0} products</p>
+                    <p style="font-size: 12px; color: #666;"><i class="fas fa-shopping-cart"></i> ${category.orders_count || 0} orders</p>
                 </div>
                 <div class="category-actions">
                     <button class="action-btn edit" onclick="editCategory(${category.id})" title="Edit Category">
@@ -495,6 +509,9 @@ async function editProduct(id) {
         console.log('Fetching product from API...');
         const product = await apiCall(`api_products.php?action=get&id=${id}`);
         console.log('Product received:', product);
+        
+        // Populate subcategory dropdown from database first
+        await populateSubcategoryDropdown();
         
         // Populate form with product data
         const form = document.getElementById('addProductForm');
@@ -832,7 +849,7 @@ function stopCamera() {
     }
 }
 
-function capturePhoto() {
+async function capturePhoto() {
     if (capturedImages.length >= MAX_IMAGES) {
         showNotification(`Maximum ${MAX_IMAGES} photos allowed!`, 'error');
         return;
@@ -850,28 +867,50 @@ function capturePhoto() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // Convert to data URL
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
     
-    // Add to images array
-    capturedImages.push(imageData);
+    showNotification('Uploading photo...', 'info');
     
-    // Update preview
-    updateImagePreview();
-    
-    // Update form input with comma-separated image URLs
-    const imageUrlInput = document.getElementById('imageUrlInput');
-    imageUrlInput.value = capturedImages.join(',');
-    
-    showNotification(`Photo ${capturedImages.length}/${MAX_IMAGES} captured successfully!`, 'success');
-    
-    // Stop camera if we've reached the maximum
-    if (capturedImages.length >= MAX_IMAGES) {
-        stopCamera();
-        showNotification('Maximum photos reached. Camera stopped.', 'info');
+    try {
+        // Upload the image to server
+        const response = await fetch('api_upload.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ image: base64Image })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+            // Add server URL to images array
+            capturedImages.push(result.url);
+            
+            // Update preview
+            updateImagePreview();
+            
+            // Update form input with comma-separated image URLs
+            const imageUrlInput = document.getElementById('imageUrlInput');
+            imageUrlInput.value = capturedImages.join(',');
+            
+            showNotification(`Photo ${capturedImages.length}/${MAX_IMAGES} captured and uploaded!`, 'success');
+            
+            // Stop camera if we've reached the maximum
+            if (capturedImages.length >= MAX_IMAGES) {
+                stopCamera();
+                showNotification('Maximum photos reached. Camera stopped.', 'info');
+            }
+        } else {
+            showNotification('Failed to upload photo: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        showNotification('Failed to upload photo. Please try again.', 'error');
     }
 }
 
-function handleFileUpload(e) {
+async function handleFileUpload(e) {
     const files = Array.from(e.target.files);
     
     for (const file of files) {
@@ -881,20 +920,36 @@ function handleFileUpload(e) {
         }
         
         if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
+            showNotification('Uploading image...', 'info');
             
-            reader.onload = function(event) {
-                capturedImages.push(event.target.result);
-                updateImagePreview();
+            try {
+                // Upload file to server
+                const formData = new FormData();
+                formData.append('image', file);
                 
-                // Update form input with comma-separated image URLs
-                const imageUrlInput = document.getElementById('imageUrlInput');
-                imageUrlInput.value = capturedImages.join(',');
+                const response = await fetch('api_upload.php', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                showNotification(`Image ${capturedImages.length}/${MAX_IMAGES} uploaded successfully!`, 'success');
-            };
-            
-            reader.readAsDataURL(file);
+                const result = await response.json();
+                
+                if (result.success && result.url) {
+                    capturedImages.push(result.url);
+                    updateImagePreview();
+                    
+                    // Update form input with comma-separated image URLs
+                    const imageUrlInput = document.getElementById('imageUrlInput');
+                    imageUrlInput.value = capturedImages.join(',');
+                    
+                    showNotification(`Image ${capturedImages.length}/${MAX_IMAGES} uploaded successfully!`, 'success');
+                } else {
+                    showNotification('Failed to upload image: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                showNotification('Failed to upload image. Please try again.', 'error');
+            }
         } else {
             showNotification('Please select valid image files.', 'error');
         }
@@ -905,6 +960,23 @@ function handleFileUpload(e) {
 }
 
 function removeImage(index) {
+    // If no index provided, clear all images
+    if (index === undefined) {
+        capturedImages = [];
+        updateImagePreview();
+        
+        const imageUrlInput = document.getElementById('imageUrlInput');
+        imageUrlInput.value = '';
+        
+        const imagePreview = document.getElementById('imagePreview');
+        if (imagePreview) {
+            imagePreview.style.display = 'none';
+        }
+        
+        showNotification('All images cleared.', 'info');
+        return;
+    }
+    
     if (index >= 0 && index < capturedImages.length) {
         capturedImages.splice(index, 1);
         updateImagePreview();
@@ -919,11 +991,16 @@ function removeImage(index) {
 
 function updateImagePreview() {
     const previewContainer = document.getElementById('previewImage');
+    const imagePreview = document.getElementById('imagePreview');
     
     if (capturedImages.length === 0) {
         previewContainer.innerHTML = '<span style="color: #999;">No photos yet</span>';
+        if (imagePreview) imagePreview.style.display = 'none';
         return;
     }
+    
+    // Show the preview section
+    if (imagePreview) imagePreview.style.display = 'block';
     
     // Clear existing previews
     previewContainer.innerHTML = '';
@@ -1041,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up add buttons
     const addProductBtn = document.getElementById('addProductBtn');
     if (addProductBtn) {
-        addProductBtn.addEventListener('click', () => {
+        addProductBtn.addEventListener('click', async () => {
             // Reset edit mode
             isEditMode = false;
             editProductId = null;
@@ -1059,6 +1136,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (submitBtn) {
                 submitBtn.textContent = 'Add Product';
             }
+            // Populate subcategory dropdown from database
+            await populateSubcategoryDropdown();
             openModal('addProductModal');
         });
     }
@@ -1259,6 +1338,447 @@ function closePurchaseModal() {
     if (!modal) return;
     modal.style.display = 'none';
     document.body.style.overflow = '';
+}
+
+// ==================== ORDER FUNCTIONS ====================
+
+// View Order Details
+async function viewOrder(orderId) {
+    console.log('viewOrder called with id:', orderId);
+    
+    try {
+        const response = await fetch(`api_orders.php?action=get&id=${orderId}`);
+        const order = await response.json();
+        
+        if (order.error) {
+            showNotification('Order not found', 'error');
+            return;
+        }
+        
+        const orderDate = new Date(order.order_date || order.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        
+        // Build order items HTML
+        let itemsHTML = '';
+        if (order.items && order.items.length > 0) {
+            itemsHTML = `
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Product</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #ddd;">Price</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${order.items.map(item => `
+                            <tr>
+                                <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.product_name}</td>
+                                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${item.quantity}</td>
+                                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">₹${parseFloat(item.price).toLocaleString()}</td>
+                                <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">₹${parseFloat(item.total).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else if (order.products) {
+            itemsHTML = `<p style="padding: 10px; background: #f9f9f9; border-radius: 8px;">${order.products}</p>`;
+        }
+        
+        const detailsHTML = `
+            <div style="display: grid; gap: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px; color: #00bac7;"><i class="fas fa-info-circle"></i> Order Info</h4>
+                        <p><strong>Order ID:</strong> ${order.id}</p>
+                        <p><strong>Date:</strong> ${orderDate}</p>
+                        <p><strong>Status:</strong> <span class="status-badge ${order.status || 'pending'}">${order.status || 'Pending'}</span></p>
+                        <p><strong>Payment:</strong> ${order.payment_method || 'N/A'}</p>
+                    </div>
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px; color: #00bac7;"><i class="fas fa-user"></i> Customer Info</h4>
+                        <p><strong>Name:</strong> ${order.customer_name || 'N/A'}</p>
+                        <p><strong>Address:</strong> ${order.shipping_address || 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                    <h4 style="margin: 0 0 10px; color: #00bac7;"><i class="fas fa-shopping-bag"></i> Order Items</h4>
+                    ${itemsHTML}
+                </div>
+                
+                <div style="background: #00bac7; color: white; padding: 15px; border-radius: 8px; text-align: right;">
+                    <h3 style="margin: 0;">Total: ₹${parseFloat(order.total_amount || 0).toLocaleString()}</h3>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('orderDetailsContent').innerHTML = detailsHTML;
+        
+        // Store current order ID for printing
+        window.currentOrderId = orderId;
+        window.currentOrder = order;
+        
+        openModal('viewOrderModal');
+        
+    } catch (error) {
+        console.error('Error fetching order:', error);
+        showNotification('Failed to load order details', 'error');
+    }
+}
+
+// Edit Order
+async function editOrder(orderId) {
+    console.log('editOrder called with id:', orderId);
+    
+    try {
+        const response = await fetch(`api_orders.php?action=get&id=${orderId}`);
+        const order = await response.json();
+        
+        if (order.error) {
+            showNotification('Order not found', 'error');
+            return;
+        }
+        
+        // Populate form fields
+        document.getElementById('editOrderId').value = order.id;
+        document.getElementById('editOrderIdDisplay').value = order.id;
+        document.getElementById('editOrderCustomer').value = order.customer_name || '';
+        document.getElementById('editOrderStatus').value = order.status || 'pending';
+        document.getElementById('editOrderPayment').value = order.payment_method || '';
+        document.getElementById('editOrderAddress').value = order.shipping_address || '';
+        document.getElementById('editOrderTotal').value = order.total_amount || 0;
+        
+        openModal('editOrderModal');
+        
+    } catch (error) {
+        console.error('Error fetching order:', error);
+        showNotification('Failed to load order details', 'error');
+    }
+}
+
+// Save Order Changes
+async function saveOrderChanges(event) {
+    event.preventDefault();
+    
+    const orderId = document.getElementById('editOrderId').value;
+    const orderData = {
+        customer_name: document.getElementById('editOrderCustomer').value,
+        status: document.getElementById('editOrderStatus').value,
+        payment_method: document.getElementById('editOrderPayment').value,
+        shipping_address: document.getElementById('editOrderAddress').value
+    };
+    
+    try {
+        const response = await fetch(`api_orders.php?action=update&id=${orderId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Order updated successfully!', 'success');
+            closeModal('editOrderModal');
+            loadOrdersTable();
+        } else {
+            showNotification('Failed to update order: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error updating order:', error);
+        showNotification('Failed to update order', 'error');
+    }
+}
+
+// Print Order
+function printOrder() {
+    const order = window.currentOrder;
+    if (!order) {
+        showNotification('No order to print', 'error');
+        return;
+    }
+    
+    const orderDate = new Date(order.order_date || order.created_at).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'long', year: 'numeric'
+    });
+    
+    let itemsHTML = '';
+    if (order.items && order.items.length > 0) {
+        itemsHTML = order.items.map(item => `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${item.product_name}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹${parseFloat(item.price).toLocaleString()}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">₹${parseFloat(item.total).toLocaleString()}</td>
+            </tr>
+        `).join('');
+    } else if (order.products) {
+        itemsHTML = `<tr><td colspan="4" style="padding: 8px; border: 1px solid #ddd;">${order.products}</td></tr>`;
+    }
+    
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Order ${order.id} - VisionKart</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                h1 { color: #00bac7; }
+                .info-grid { display: flex; gap: 40px; margin-bottom: 20px; }
+                .info-section { flex: 1; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th { background: #00bac7; color: white; padding: 10px; text-align: left; }
+                .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+                @media print { body { padding: 0; } }
+            </style>
+        </head>
+        <body>
+            <h1>VisionKart - Order Invoice</h1>
+            <hr>
+            <div class="info-grid">
+                <div class="info-section">
+                    <h3>Order Details</h3>
+                    <p><strong>Order ID:</strong> ${order.id}</p>
+                    <p><strong>Date:</strong> ${orderDate}</p>
+                    <p><strong>Status:</strong> ${order.status || 'Pending'}</p>
+                    <p><strong>Payment:</strong> ${order.payment_method || 'N/A'}</p>
+                </div>
+                <div class="info-section">
+                    <h3>Customer Details</h3>
+                    <p><strong>Name:</strong> ${order.customer_name || 'N/A'}</p>
+                    <p><strong>Address:</strong> ${order.shipping_address || 'N/A'}</p>
+                </div>
+            </div>
+            <h3>Order Items</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHTML}
+                </tbody>
+            </table>
+            <div class="total">
+                <strong>Grand Total: ₹${parseFloat(order.total_amount || 0).toLocaleString()}</strong>
+            </div>
+            <hr>
+            <p style="text-align: center; color: #666; margin-top: 30px;">Thank you for shopping with VisionKart!</p>
+        </body>
+        </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+    }, 250);
+}
+
+// Initialize edit order form listener
+document.addEventListener('DOMContentLoaded', function() {
+    const editOrderForm = document.getElementById('editOrderForm');
+    if (editOrderForm) {
+        editOrderForm.addEventListener('submit', saveOrderChanges);
+    }
+    
+    const editCustomerForm = document.getElementById('editCustomerForm');
+    if (editCustomerForm) {
+        editCustomerForm.addEventListener('submit', saveCustomerChanges);
+    }
+});
+
+// ==================== CUSTOMER FUNCTIONS ====================
+
+// View Customer Details
+async function viewCustomer(customerId) {
+    console.log('viewCustomer called with id:', customerId);
+    
+    try {
+        const response = await fetch(`api_customers.php?action=get&id=${customerId}`);
+        const customer = await response.json();
+        
+        if (customer.error) {
+            showNotification('Customer not found', 'error');
+            return;
+        }
+        
+        const joinedDate = new Date(customer.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'long', year: 'numeric'
+        });
+        
+        const lastLogin = customer.last_login 
+            ? new Date(customer.last_login).toLocaleDateString('en-IN', {
+                day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            })
+            : 'Never';
+        
+        // Build orders HTML
+        let ordersHTML = '';
+        if (customer.orders && customer.orders.length > 0) {
+            ordersHTML = `
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Order ID</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Date</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Status</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #ddd;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${customer.orders.map(order => {
+                            const orderDate = new Date(order.order_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                            return `
+                                <tr>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${order.id}</td>
+                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${orderDate}</td>
+                                    <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
+                                        <span class="status-badge ${order.status || 'pending'}">${order.status || 'Pending'}</span>
+                                    </td>
+                                    <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">₹${parseFloat(order.total_amount).toLocaleString()}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            ordersHTML = `<p style="padding: 10px; background: #f9f9f9; border-radius: 8px; text-align: center; color: #999;">No orders yet</p>`;
+        }
+        
+        const detailsHTML = `
+            <div style="display: grid; gap: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px; color: #00bac7;"><i class="fas fa-user"></i> Personal Info</h4>
+                        <p><strong>ID:</strong> #${customer.id}</p>
+                        <p><strong>Name:</strong> ${customer.name || 'N/A'}</p>
+                        <p><strong>Email:</strong> ${customer.email}</p>
+                        <p><strong>Phone:</strong> ${customer.phone || 'N/A'}</p>
+                        <p><strong>Role:</strong> <span style="text-transform: capitalize;">${customer.role || 'Customer'}</span></p>
+                        <p><strong>Status:</strong> <span class="status-badge ${customer.status || 'active'}">${customer.status || 'Active'}</span></p>
+                    </div>
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 10px; color: #00bac7;"><i class="fas fa-chart-line"></i> Activity</h4>
+                        <p><strong>Joined:</strong> ${joinedDate}</p>
+                        <p><strong>Last Login:</strong> ${lastLogin}</p>
+                        <p><strong>Total Orders:</strong> ${customer.orders_count || 0}</p>
+                        <p><strong>Total Spent:</strong> ₹${parseFloat(customer.total_spent || 0).toLocaleString()}</p>
+                    </div>
+                </div>
+                
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                    <h4 style="margin: 0 0 10px; color: #00bac7;"><i class="fas fa-shopping-bag"></i> Order History</h4>
+                    ${ordersHTML}
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('customerDetailsContent').innerHTML = detailsHTML;
+        
+        // Store current customer ID for edit
+        window.currentCustomerId = customerId;
+        window.currentCustomer = customer;
+        
+        openModal('viewCustomerModal');
+        
+    } catch (error) {
+        console.error('Error fetching customer:', error);
+        showNotification('Failed to load customer details', 'error');
+    }
+}
+
+// Edit Customer
+async function editCustomer(customerId) {
+    console.log('editCustomer called with id:', customerId);
+    
+    try {
+        const response = await fetch(`api_customers.php?action=get&id=${customerId}`);
+        const customer = await response.json();
+        
+        if (customer.error) {
+            showNotification('Customer not found', 'error');
+            return;
+        }
+        
+        // Parse name into first and last name
+        const nameParts = (customer.name || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        // Populate form fields
+        document.getElementById('editCustomerId').value = customer.id;
+        document.getElementById('editCustomerFirstName').value = firstName;
+        document.getElementById('editCustomerLastName').value = lastName;
+        document.getElementById('editCustomerEmail').value = customer.email || '';
+        document.getElementById('editCustomerPhone').value = customer.phone || '';
+        document.getElementById('editCustomerStatus').value = customer.status || 'active';
+        document.getElementById('editCustomerRole').value = customer.role || 'customer';
+        
+        openModal('editCustomerModal');
+        
+    } catch (error) {
+        console.error('Error fetching customer:', error);
+        showNotification('Failed to load customer details', 'error');
+    }
+}
+
+// Edit customer from view modal
+function editCustomerFromView() {
+    const customerId = window.currentCustomerId;
+    if (customerId) {
+        closeModal('viewCustomerModal');
+        setTimeout(() => {
+            editCustomer(customerId);
+        }, 300);
+    }
+}
+
+// Save Customer Changes
+async function saveCustomerChanges(event) {
+    event.preventDefault();
+    
+    const customerId = document.getElementById('editCustomerId').value;
+    const customerData = {
+        first_name: document.getElementById('editCustomerFirstName').value,
+        last_name: document.getElementById('editCustomerLastName').value,
+        email: document.getElementById('editCustomerEmail').value,
+        phone: document.getElementById('editCustomerPhone').value,
+        status: document.getElementById('editCustomerStatus').value,
+        role: document.getElementById('editCustomerRole').value
+    };
+    
+    try {
+        const response = await fetch(`api_customers.php?action=update&id=${customerId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(customerData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Customer updated successfully!', 'success');
+            closeModal('editCustomerModal');
+            loadCustomersTable();
+        } else {
+            showNotification('Failed to update customer: ' + (result.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error updating customer:', error);
+        showNotification('Failed to update customer', 'error');
+    }
 }
 
 // Add animation styles

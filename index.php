@@ -478,18 +478,6 @@
                 </div>
             </div>
 
-            <div style="text-align: center; margin: 20px 0;">
-                <button onclick="location.reload()" style="padding: 12px 24px; background: #00bac7; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-right: 10px;">
-                    <i class="fas fa-sync-alt"></i> Refresh Products
-                </button>
-                <button onclick="loadProducts(); alert('Products reloaded! Total: ' + (document.getElementById('productGrid').children.length))" style="padding: 12px 24px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-right: 10px;">
-                    <i class="fas fa-box"></i> Reload from Storage
-                </button>
-                <button onclick="const stored = JSON.parse(localStorage.getItem('visionkart_products') || '[]'); const deleted = JSON.parse(localStorage.getItem('visionkart_deleted_products') || '[]'); alert('Products in storage: ' + stored.length + '\\nDeleted products: ' + deleted.length + '\\nDeleted IDs: ' + deleted.join(', '))" style="padding: 12px 24px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
-                    <i class="fas fa-info-circle"></i> Check Storage
-                </button>
-            </div>
-
             <div class="product-grid" id="productGrid">
                 <!-- Products will be dynamically loaded by JavaScript -->
             </div>

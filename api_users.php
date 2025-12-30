@@ -9,6 +9,7 @@ header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
 
 // Database configuration
 define('DB_HOST', 'localhost');
@@ -420,19 +421,32 @@ function getUserOrders() {
     $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
     
     try {
-        $stmt = $conn->prepare("SELECT o.*, COUNT(oi.id) as item_count 
-                               FROM orders o 
-                               LEFT JOIN order_items oi ON o.id = oi.order_id 
-                               WHERE o.user_id = ? 
-                               GROUP BY o.id 
-                               ORDER BY o.created_at DESC 
-                               LIMIT ? OFFSET ?");
-        $stmt->execute([$_SESSION['user_id'], $limit, $offset]);
+        // Get user info for matching orders by customer_name as fallback
+        $userStmt = $conn->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
+        $userStmt->execute([$_SESSION['user_id']]);
+        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+        
+        $fullName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : '';
+        $email = $user ? $user['email'] : '';
+        
+        // Get orders by user_id OR by matching customer_name/email (for orders placed before user_id was saved)
+        $sql = "SELECT o.*, COUNT(oi.id) as item_count 
+                FROM orders o 
+                LEFT JOIN order_items oi ON o.id = oi.order_id 
+                WHERE o.user_id = ? 
+                   OR (o.user_id IS NULL AND (o.customer_name = ? OR o.customer_name = ?))
+                GROUP BY o.id 
+                ORDER BY o.created_at DESC 
+                LIMIT $limit OFFSET $offset";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Get total count
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
+        $stmt = $conn->prepare("SELECT COUNT(DISTINCT o.id) FROM orders o 
+                               WHERE o.user_id = ? 
+                                  OR (o.user_id IS NULL AND (o.customer_name = ? OR o.customer_name = ?))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
         $totalCount = $stmt->fetchColumn();
         
         echo json_encode([
@@ -456,19 +470,33 @@ function getUserStats() {
     global $conn;
     
     try {
+        // Get user info for matching orders by customer_name as fallback
+        $userStmt = $conn->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
+        $userStmt->execute([$_SESSION['user_id']]);
+        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+        
+        $fullName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : '';
+        $email = $user ? $user['email'] : '';
+        
         // Total orders
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
+        $stmt = $conn->prepare("SELECT COUNT(DISTINCT id) FROM orders 
+                               WHERE user_id = ? 
+                                  OR (user_id IS NULL AND (customer_name = ? OR customer_name = ?))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
         $totalOrders = $stmt->fetchColumn();
         
         // Total spent
-        $stmt = $conn->prepare("SELECT SUM(total_amount) FROM orders WHERE user_id = ? AND status != 'cancelled'");
-        $stmt->execute([$_SESSION['user_id']]);
+        $stmt = $conn->prepare("SELECT SUM(total_amount) FROM orders 
+                               WHERE status != 'cancelled' AND 
+                                  (user_id = ? OR (user_id IS NULL AND (customer_name = ? OR customer_name = ?)))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
         $totalSpent = $stmt->fetchColumn() ?? 0;
         
         // Pending orders
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status IN ('pending', 'processing')");
-        $stmt->execute([$_SESSION['user_id']]);
+        $stmt = $conn->prepare("SELECT COUNT(DISTINCT id) FROM orders 
+                               WHERE status IN ('pending', 'processing') AND 
+                                  (user_id = ? OR (user_id IS NULL AND (customer_name = ? OR customer_name = ?)))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
         $pendingOrders = $stmt->fetchColumn();
         
         // Wishlist count

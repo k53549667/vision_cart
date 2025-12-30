@@ -3,10 +3,13 @@
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
+session_start();
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -97,17 +100,21 @@ function createOrder() {
     // Generate order ID
     $order_id = 'ORD-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
 
+    // Get user_id from session if logged in
+    $user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+
     // Handle customer_id - if it's an email or non-numeric, set to NULL
     $customer_id = null;
     if (isset($data['customer_id']) && is_numeric($data['customer_id'])) {
         $customer_id = (int)$data['customer_id'];
     }
 
-    $sql = "INSERT INTO orders (id, customer_id, customer_name, products, total_amount, order_date, status, payment_method, shipping_address)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO orders (id, user_id, customer_id, customer_name, products, total_amount, order_date, status, payment_method, shipping_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $params = [
         $order_id,
+        $user_id,
         $customer_id,
         $data['customer_name'],
         $data['products'] ?? '',

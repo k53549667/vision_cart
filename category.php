@@ -108,12 +108,6 @@ function getFilteredProducts($shape, $filters = []) {
         $params[] = floatval($filters['max_price']);
     }
     
-    // Filter by gender
-    if (!empty($filters['gender'])) {
-        $sql .= " AND LOWER(gender) = ?";
-        $params[] = strtolower($filters['gender']);
-    }
-    
     // Sorting
     $sort = isset($filters['sort']) ? $filters['sort'] : 'newest';
     switch ($sort) {
@@ -271,7 +265,7 @@ $brands = array_column($allBrands, 'brand');
                             <i class="fas fa-heart"></i>
                             <span class="wishlist-count">0</span>
                         </a>
-                        <a href="#" class="icon-link cart-icon" id="cartIconLink">
+                        <a href="checkout.php" class="icon-link cart-icon" id="cartIconLink">
                             <i class="fas fa-shopping-cart"></i>
                             <span class="cart-count">0</span>
                         </a>

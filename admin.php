@@ -1,3 +1,15 @@
+<?php
+session_start();
+
+// Check if admin is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: admin_login.php');
+    exit;
+}
+
+$adminUsername = $_SESSION['admin_username'] ?? 'Admin';
+$adminRole = $_SESSION['admin_role'] ?? 'admin';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -73,8 +85,8 @@
                         <span class="badge">5</span>
                     </div>
                     <div class="admin-profile">
-                        <img src="https://ui-avatars.com/api/?name=Admin&background=00bac7&color=fff" alt="Admin">
-                        <span>Admin</span>
+                        <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($adminUsername); ?>&background=00bac7&color=fff" alt="<?php echo htmlspecialchars($adminUsername); ?>">
+                        <span><?php echo htmlspecialchars($adminUsername); ?></span>
                     </div>
                 </div>
             </header>
@@ -699,24 +711,17 @@
                         <label>Category</label>
                         <select name="category" id="mainCategory" required>
                             <option value="">Select Category</option>
-                            <option value="eyeglasses">Eyeglasses</option>
-                            <option value="sunglasses">Sunglasses</option>
-                            <option value="contact-lenses">Contact Lenses</option>
-                            <option value="accessories">Accessories</option>
+                            <option value="Eyeglasses">Eyeglasses</option>
+                            <option value="Sunglasses">Sunglasses</option>
+                            <option value="Contact Lenses">Contact Lenses</option>
+                            <option value="Accessories">Accessories</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Sub Category</label>
+                        <label>Sub Category (Frame Shape)</label>
                         <select name="subcategory" id="subCategory" required>
                             <option value="">Select Sub Category</option>
-                            <option value="round">Round</option>
-                            <option value="cat-eye">Cat-Eye</option>
-                            <option value="clubmaster">Clubmaster</option>
-                            <option value="transparent">Transparent</option>
-                            <option value="square">Square</option>
-                            <option value="wayfarer">Wayfarer</option>
-                            <option value="aviator">Aviator</option>
-                            <option value="rectangle">Rectangle</option>
+                            <!-- Will be populated from database -->
                         </select>
                     </div>
                 </div>
@@ -761,8 +766,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Price with GST (₹)</label>
-                        <input type="number" name="priceWithGst" id="priceWithGst" step="0.01" readonly>
+                        <!-- Empty column for alignment -->
                     </div>
                 </div>
 
@@ -802,7 +806,7 @@
                             </button>
                             <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
                         </div>
-                        <input type="url" name="image" id="imageUrlInput" placeholder="Or paste image URL" style="margin-top: 10px;">
+                        <input type="text" name="image" id="imageUrlInput" placeholder="Or paste image URL/path" style="margin-top: 10px;">
                         
                         <!-- Camera Preview -->
                         <div id="cameraSection" style="display: none; margin-top: 15px;">
@@ -919,7 +923,191 @@
         </div>
     </div>
 
+    <!-- View Order Modal -->
+    <div id="viewOrderModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-receipt"></i> Order Details</h2>
+                <span class="close" onclick="closeModal('viewOrderModal')">&times;</span>
+            </div>
+            <div id="orderDetailsContent" class="modal-body" style="padding: 20px;">
+                <!-- Order details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('viewOrderModal')">Close</button>
+                <button type="button" class="btn-primary" onclick="printOrder()"><i class="fas fa-print"></i> Print</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Edit Order</h2>
+                <span class="close" onclick="closeModal('editOrderModal')">&times;</span>
+            </div>
+            <form id="editOrderForm" class="modal-form">
+                <input type="hidden" id="editOrderId" name="orderId">
+                
+                <div class="form-group">
+                    <label>Order ID</label>
+                    <input type="text" id="editOrderIdDisplay" readonly style="background: #f5f5f5;">
+                </div>
+
+                <div class="form-group">
+                    <label>Customer Name</label>
+                    <input type="text" id="editOrderCustomer" name="customer_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editOrderStatus" name="status" required>
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select id="editOrderPayment" name="payment_method">
+                        <option value="">Select Payment Method</option>
+                        <option value="cod">Cash on Delivery</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="netbanking">Net Banking</option>
+                        <option value="wallet">Wallet</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Shipping Address</label>
+                    <textarea id="editOrderAddress" name="shipping_address" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Total Amount (₹)</label>
+                    <input type="number" id="editOrderTotal" name="total_amount" step="0.01" readonly style="background: #f5f5f5;">
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editOrderModal')">Cancel</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Customer Modal -->
+    <div id="viewCustomerModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-circle"></i> Customer Details</h2>
+                <span class="close" onclick="closeModal('viewCustomerModal')">&times;</span>
+            </div>
+            <div id="customerDetailsContent" class="modal-body" style="padding: 20px;">
+                <!-- Customer details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('viewCustomerModal')">Close</button>
+                <button type="button" class="btn-primary" onclick="editCustomerFromView()"><i class="fas fa-edit"></i> Edit Customer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div id="editCustomerModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-edit"></i> Edit Customer</h2>
+                <span class="close" onclick="closeModal('editCustomerModal')">&times;</span>
+            </div>
+            <form id="editCustomerForm" class="modal-form">
+                <input type="hidden" id="editCustomerId" name="customerId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" id="editCustomerFirstName" name="first_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" id="editCustomerLastName" name="last_name">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="editCustomerEmail" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="editCustomerPhone" name="phone">
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editCustomerStatus" name="status" required>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="editCustomerRole" name="role" required>
+                        <option value="customer">Customer</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editCustomerModal')">Cancel</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="admin-script-new.js"></script>
     <script src="admin-purchases-enhanced.js"></script>
+    <script>
+        // Logout handler - wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (confirm('Are you sure you want to logout?')) {
+                        try {
+                            const response = await fetch('api_admin_auth.php?action=logout', {
+                                method: 'POST',
+                                credentials: 'include'
+                            });
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                window.location.href = 'admin_login.php';
+                            } else {
+                                window.location.href = 'admin_login.php';
+                            }
+                        } catch (error) {
+                            console.error('Logout error:', error);
+                            // Redirect anyway
+                            window.location.href = 'admin_login.php';
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

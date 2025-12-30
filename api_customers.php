@@ -208,7 +208,7 @@ function updateCustomer($id) {
     }
 
     // Direct field mappings
-    $allowed_fields = ['email', 'phone', 'first_name', 'last_name', 'status'];
+    $allowed_fields = ['email', 'phone', 'first_name', 'last_name', 'status', 'role'];
 
     foreach ($allowed_fields as $field) {
         if (isset($data[$field])) {

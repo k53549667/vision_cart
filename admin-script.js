@@ -1438,7 +1438,7 @@ function stopCamera() {
     }
 }
 
-function capturePhoto() {
+async function capturePhoto() {
     const video = document.getElementById('cameraPreview');
     const canvas = document.getElementById('photoCanvas');
     const imagePreview = document.getElementById('imagePreview');
@@ -1454,42 +1454,99 @@ function capturePhoto() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // Convert to data URL
-    capturedImageData = canvas.toDataURL('image/jpeg', 0.8);
+    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
     
-    // Show preview
-    previewImage.src = capturedImageData;
+    // Show preview immediately
+    previewImage.innerHTML = `<img src="${base64Image}" alt="Preview" style="max-width: 100%; max-height: 150px; border-radius: 8px;">`;
     imagePreview.style.display = 'block';
-    
-    // Set the image URL input
-    imageUrlInput.value = capturedImageData;
     
     // Stop camera
     stopCamera();
     
-    showNotification('Photo captured successfully!', 'success');
+    showNotification('Uploading photo...', 'info');
+    
+    try {
+        // Upload the image to server
+        const response = await fetch('api_upload.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ image: base64Image })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            capturedImageData = result.url;
+            imageUrlInput.value = result.url;
+            showNotification('Photo captured and saved successfully!', 'success');
+        } else {
+            // Fallback to base64 if upload fails
+            capturedImageData = base64Image;
+            imageUrlInput.value = base64Image;
+            showNotification('Photo captured! (Saved locally)', 'warning');
+        }
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        // Fallback to base64 if upload fails
+        capturedImageData = base64Image;
+        imageUrlInput.value = base64Image;
+        showNotification('Photo captured! (Saved locally)', 'warning');
+    }
 }
 
 function handleFileUpload(e) {
     const file = e.target.files[0];
     
     if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        const imageUrlInput = document.getElementById('imageUrlInput');
         
-        reader.onload = function(event) {
-            capturedImageData = event.target.result;
-            
-            const imagePreview = document.getElementById('imagePreview');
-            const previewImage = document.getElementById('previewImage');
-            const imageUrlInput = document.getElementById('imageUrlInput');
-            
-            previewImage.src = capturedImageData;
-            imagePreview.style.display = 'block';
-            imageUrlInput.value = capturedImageData;
-            
-            showNotification('Image uploaded successfully!', 'success');
-        };
+        // Show preview immediately using local file
+        const localUrl = URL.createObjectURL(file);
+        previewImage.innerHTML = `<img src="${localUrl}" alt="Preview" style="max-width: 100%; max-height: 150px; border-radius: 8px;">`;
+        imagePreview.style.display = 'block';
         
-        reader.readAsDataURL(file);
+        showNotification('Uploading image...', 'info');
+        
+        // Upload file to server
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        fetch('api_upload.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                capturedImageData = result.url;
+                imageUrlInput.value = result.url;
+                showNotification('Image uploaded successfully!', 'success');
+            } else {
+                // Fallback to base64 if upload fails
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    capturedImageData = event.target.result;
+                    imageUrlInput.value = event.target.result;
+                    showNotification('Image saved locally!', 'warning');
+                };
+                reader.readAsDataURL(file);
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading image:', error);
+            // Fallback to base64 if upload fails
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                capturedImageData = event.target.result;
+                imageUrlInput.value = event.target.result;
+                showNotification('Image saved locally!', 'warning');
+            };
+            reader.readAsDataURL(file);
+        });
     } else {
         showNotification('Please select a valid image file.', 'error');
     }
@@ -1503,31 +1560,18 @@ function removeImage() {
     const imageUrlInput = document.getElementById('imageUrlInput');
     const imageFileInput = document.getElementById('imageFileInput');
     
-    previewImage.src = '';
+    previewImage.innerHTML = '';
     imagePreview.style.display = 'none';
     imageUrlInput.value = '';
-    imageFileInput.value = '';
+    if (imageFileInput) imageFileInput.value = '';
     
     showNotification('Image removed.', 'info');
 }
 
-// GST Calculation
+// GST Calculation - Function kept for compatibility but priceWithGst field removed
 function setupGSTCalculation() {
-    const priceInput = document.querySelector('input[name="price"]');
-    const gstSelect = document.querySelector('select[name="gst"]');
-    const priceWithGstInput = document.getElementById('priceWithGst');
-    
-    function calculateGST() {
-        const price = parseFloat(priceInput.value) || 0;
-        const gstRate = parseFloat(gstSelect.value) || 0;
-        const priceWithGst = price * (1 + gstRate / 100);
-        priceWithGstInput.value = priceWithGst.toFixed(2);
-    }
-    
-    if (priceInput && gstSelect && priceWithGstInput) {
-        priceInput.addEventListener('input', calculateGST);
-        gstSelect.addEventListener('change', calculateGST);
-    }
+    // The priceWithGst field has been removed from the modal
+    // This function is kept for compatibility but does nothing now
 }
 
 // Video Feature

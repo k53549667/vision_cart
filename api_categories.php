@@ -51,7 +51,16 @@ switch ($method) {
 }
 
 function getCategories() {
-    $categories = getRows("SELECT * FROM categories ORDER BY name");
+    // Get categories with dynamic product count from products table
+    // Categories table stores frame shapes (Round, Cat-Eye, etc.) which matches products.subcategory
+    $sql = "SELECT c.*, 
+            (SELECT COUNT(*) FROM products p WHERE LOWER(p.subcategory) = LOWER(c.name)) as products_count,
+            (SELECT COUNT(*) FROM order_items oi 
+             INNER JOIN products p ON oi.product_id = p.id 
+             WHERE LOWER(p.subcategory) = LOWER(c.name)) as orders_count
+            FROM categories c 
+            ORDER BY c.name";
+    $categories = getRows($sql);
     echo json_encode($categories);
 }
 
