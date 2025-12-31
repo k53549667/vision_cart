@@ -429,6 +429,12 @@ function proceedToCheckout() {
     window.location.href = 'checkout.php';
 }
 
+// Helper function to get images array from comma-separated string
+function getImagesArray(imageStr) {
+    if (!imageStr) return [];
+    return imageStr.split(',').map(img => img.trim()).filter(img => img);
+}
+
 // Find product by ID
 async function findProductById(id) {
     try {
@@ -438,13 +444,18 @@ async function findProductById(id) {
             const product = await response.json();
             if (product && !product.error) {
                 console.log('✅ Found product in database:', product);
+                // Parse images from comma-separated string
+                const images = getImagesArray(product.image);
+                const mainImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=600&h=600&fit=crop';
+                
                 // Map database fields to expected format
                 return {
                     id: product.id,
                     name: product.name,
                     price: parseFloat(product.price),
                     originalPrice: parseFloat(product.original_price) || parseFloat(product.price) * 2,
-                    image: product.image,
+                    image: mainImage,
+                    images: images,
                     category: product.subcategory || product.category,
                     type: product.category,
                     brand: product.brand,
@@ -552,7 +563,49 @@ async function loadProductDetails() {
     
     // Update images
     document.getElementById('mainProductImage').src = product.image;
-    document.querySelector('.thumbnail-images .thumb').src = product.image;
+    
+    // Update thumbnail images
+    const thumbnailContainer = document.querySelector('.thumbnail-images');
+    if (thumbnailContainer) {
+        thumbnailContainer.innerHTML = '';
+        
+        // If product has multiple images array, use it
+        const images = product.images && product.images.length > 0 
+            ? product.images 
+            : [product.image]; // fallback to single image
+        
+        console.log('📷 Product images:', images);
+        
+        // Add default images if less than 4
+        const defaultImages = [
+            'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=100&h=100&fit=crop',
+            'https://images.unsplash.com/photo-1577803645773-f96470509666?w=100&h=100&fit=crop',
+            'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=100&h=100&fit=crop',
+            'https://images.unsplash.com/photo-1580836021208-307460e21b2e?w=100&h=100&fit=crop'
+        ];
+        
+        // Create thumbnails - use actual images count or max 4
+        const thumbCount = Math.max(images.length, 4);
+        for (let i = 0; i < thumbCount && i < 4; i++) {
+            const thumb = document.createElement('img');
+            thumb.className = 'thumb' + (i === 0 ? ' active' : '');
+            
+            if (images[i]) {
+                thumb.src = images[i];
+                thumb.dataset.fullsize = images[i]; // Store full-size URL for click handler
+            } else {
+                thumb.src = defaultImages[i] || defaultImages[0];
+                thumb.dataset.fullsize = defaultImages[i] ? defaultImages[i].replace('w=100&h=100', 'w=600&h=600') : defaultImages[0].replace('w=100&h=100', 'w=600&h=600');
+            }
+            
+            thumb.alt = `${product.name} - Image ${i + 1}`;
+            thumb.onerror = function() {
+                this.src = defaultImages[i] || defaultImages[0];
+                this.dataset.fullsize = defaultImages[i] ? defaultImages[i].replace('w=100&h=100', 'w=600&h=600') : defaultImages[0].replace('w=100&h=100', 'w=600&h=600');
+            };
+            thumbnailContainer.appendChild(thumb);
+        }
+    }
     
     // Update subtitle - handle missing fields gracefully
     const frameType = product.frameType || 'Full Rim';
@@ -572,7 +625,12 @@ async function loadProductDetails() {
 // Change main image
 function changeImage(thumb) {
     const mainImg = document.getElementById('mainProductImage');
-    mainImg.src = thumb.src.replace('w=100&h=100', 'w=600&h=600');
+    // Use data-fullsize attribute if available, otherwise try URL replacement for unsplash
+    if (thumb.dataset.fullsize) {
+        mainImg.src = thumb.dataset.fullsize;
+    } else {
+        mainImg.src = thumb.src.replace('w=100&h=100', 'w=600&h=600');
+    }
     
     // Remove active class from all thumbnails
     document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));

@@ -560,8 +560,8 @@
         <div class="container">
             <h2 class="section-title">SUNGLASSES COLLECTION</h2>
             <p class="section-subtitle">Protect your eyes in style</p>
-            <div class="products-grid" id="sunglassesGrid">
-                <p style="text-align: center; padding: 40px; color: #666;">Loading sunglasses collection...</p>
+            <div class="product-grid" id="sunglassesGrid">
+                <p style="text-align: center; padding: 40px; color: #666; grid-column: 1/-1;">Loading sunglasses collection...</p>
             </div>
         </div>
     </section>
@@ -587,8 +587,8 @@
         <div class="container">
             <h2 class="section-title">KIDS EYEWEAR</h2>
             <p class="section-subtitle">Fun, safe, and durable glasses for children</p>
-            <div class="products-grid" id="kidsGrid">
-                <p style="text-align: center; padding: 40px; color: #666;">Loading kids glasses collection...</p>
+            <div class="product-grid" id="kidsGrid">
+                <p style="text-align: center; padding: 40px; color: #666; grid-column: 1/-1;">Loading kids glasses collection...</p>
             </div>
         </div>
     </section>

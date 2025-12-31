@@ -311,13 +311,21 @@ function transformProduct(dbProduct) {
         rating: parseFloat(rating),
         reviews: reviews,
         badge: badge,
-        image: dbProduct.image || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop',
+        image: getFirstImage(dbProduct.image) || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop',
+        images: dbProduct.image ? dbProduct.image.split(',').map(img => img.trim()).filter(img => img) : [],
         brand: dbProduct.brand || 'VisionKart',
         stock: dbProduct.stock || 0,
         status: dbProduct.status || 'active',
         category: dbProduct.category,
         subcategory: dbProduct.subcategory
     };
+}
+
+// Helper function to get first image from comma-separated list
+function getFirstImage(imageStr) {
+    if (!imageStr) return null;
+    const images = imageStr.split(',').map(img => img.trim()).filter(img => img);
+    return images.length > 0 ? images[0] : null;
 }
 
 // Fetch products from database API
@@ -353,20 +361,30 @@ async function loadCategorySections() {
         const sunglassesGrid = document.getElementById('sunglassesGrid');
         if (sunglassesGrid) {
             const sunglasses = products.filter(p => p.category && p.category.toLowerCase().includes('sunglass'));
-            sunglasses.forEach(product => {
-                const card = createProductCard(product);
-                sunglassesGrid.appendChild(card);
-            });
+            if (sunglasses.length > 0) {
+                sunglassesGrid.innerHTML = ''; // Clear loading message
+                sunglasses.forEach(product => {
+                    const card = createProductCard(product);
+                    sunglassesGrid.appendChild(card);
+                });
+            } else {
+                sunglassesGrid.innerHTML = '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1/-1;">No sunglasses available at the moment.</p>';
+            }
         }
         
         // Load Kids section
         const kidsGrid = document.getElementById('kidsGrid');
         if (kidsGrid) {
             const kidsProducts = products.filter(p => p.category && p.category.toLowerCase().includes('kid'));
-            kidsProducts.forEach(product => {
-                const card = createProductCard(product);
-                kidsGrid.appendChild(card);
-            });
+            if (kidsProducts.length > 0) {
+                kidsGrid.innerHTML = ''; // Clear loading message
+                kidsProducts.forEach(product => {
+                    const card = createProductCard(product);
+                    kidsGrid.appendChild(card);
+                });
+            } else {
+                kidsGrid.innerHTML = '<p style="text-align: center; padding: 40px; color: #666; grid-column: 1/-1;">No kids glasses available at the moment.</p>';
+            }
         }
         
         console.log('✅ Category sections loaded successfully');
@@ -725,10 +743,13 @@ function displayCartItems() {
         const itemTotal = item.price * item.quantity;
         total += itemTotal;
         
+        // Get first image from comma-separated list for products with multiple images
+        const displayImage = getFirstImage(item.image) || item.image || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop';
+        
         cartHTML += `
             <div class="cart-item">
                 <div class="cart-item-image">
-                    <img src="${item.image}" alt="${item.name}">
+                    <img src="${displayImage}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop'">
                 </div>
                 <div class="cart-item-details">
                     <div class="cart-item-name">${item.name}</div>

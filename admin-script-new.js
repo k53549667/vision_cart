@@ -11,6 +11,13 @@ let cachedCategories = [];
 let isEditMode = false;
 let editProductId = null;
 
+// Helper function to get first image from comma-separated list
+function getFirstImage(imageStr) {
+    if (!imageStr) return null;
+    const images = imageStr.split(',').map(img => img.trim()).filter(img => img);
+    return images.length > 0 ? images[0] : null;
+}
+
 // Utility function for API calls
 async function apiCall(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
@@ -107,8 +114,260 @@ async function populateSubcategoryDropdown() {
             option.textContent = cat.name;
             subCategorySelect.appendChild(option);
         });
+        
+        // Add "Add New" option at the end
+        const addNewOption = document.createElement('option');
+        addNewOption.value = '__add_new__';
+        addNewOption.textContent = '+ Add New Sub Category';
+        subCategorySelect.appendChild(addNewOption);
     } catch (error) {
         console.error('Failed to populate subcategory dropdown:', error);
+    }
+}
+
+// Initialize category/subcategory add new functionality
+function initializeCategoryAddNew() {
+    const mainCategory = document.getElementById('mainCategory');
+    const subCategory = document.getElementById('subCategory');
+    const newCategoryInput = document.getElementById('newCategoryInput');
+    const newSubCategoryInput = document.getElementById('newSubCategoryInput');
+    const customCategory = document.getElementById('customCategory');
+    const customSubCategory = document.getElementById('customSubCategory');
+    const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+    const cancelCategoryBtn = document.getElementById('cancelCategoryBtn');
+    const saveSubCategoryBtn = document.getElementById('saveSubCategoryBtn');
+    const cancelSubCategoryBtn = document.getElementById('cancelSubCategoryBtn');
+
+    // Main Category - Show input when "Add New" is selected
+    if (mainCategory) {
+        mainCategory.addEventListener('change', function() {
+            if (this.value === '__add_new__') {
+                newCategoryInput.style.display = 'block';
+                customCategory.focus();
+            } else {
+                newCategoryInput.style.display = 'none';
+            }
+        });
+    }
+
+    // Save new category
+    if (saveCategoryBtn) {
+        saveCategoryBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const newCatName = customCategory.value.trim();
+            if (!newCatName) {
+                showNotification('Please enter a category name', 'error');
+                return;
+            }
+            
+            // Add to dropdown
+            const option = document.createElement('option');
+            option.value = newCatName;
+            option.textContent = newCatName;
+            
+            // Insert before "Add New" option
+            const addNewOpt = mainCategory.querySelector('option[value="__add_new__"]');
+            mainCategory.insertBefore(option, addNewOpt);
+            
+            // Select the new option
+            mainCategory.value = newCatName;
+            newCategoryInput.style.display = 'none';
+            customCategory.value = '';
+            
+            showNotification('Category added to list!', 'success');
+        });
+    }
+
+    // Cancel new category
+    if (cancelCategoryBtn) {
+        cancelCategoryBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            mainCategory.value = '';
+            newCategoryInput.style.display = 'none';
+            customCategory.value = '';
+        });
+    }
+
+    // Sub Category - Show input when "Add New" is selected
+    if (subCategory) {
+        subCategory.addEventListener('change', function() {
+            if (this.value === '__add_new__') {
+                newSubCategoryInput.style.display = 'block';
+                customSubCategory.focus();
+            } else {
+                newSubCategoryInput.style.display = 'none';
+            }
+        });
+    }
+
+    // Save new subcategory (also saves to backend)
+    if (saveSubCategoryBtn) {
+        saveSubCategoryBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const newSubCatName = customSubCategory.value.trim();
+            if (!newSubCatName) {
+                showNotification('Please enter a sub category name', 'error');
+                return;
+            }
+            
+            try {
+                // Save to backend
+                await apiCall('api_categories.php?action=create', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: newSubCatName,
+                        icon: 'fa-tag'
+                    })
+                });
+                
+                // Add to dropdown
+                const option = document.createElement('option');
+                option.value = newSubCatName;
+                option.textContent = newSubCatName;
+                
+                // Insert before "Add New" option
+                const addNewOpt = subCategory.querySelector('option[value="__add_new__"]');
+                subCategory.insertBefore(option, addNewOpt);
+                
+                // Select the new option
+                subCategory.value = newSubCatName;
+                newSubCategoryInput.style.display = 'none';
+                customSubCategory.value = '';
+                
+                showNotification('Sub category saved successfully!', 'success');
+                
+                // Refresh categories list in background
+                loadCategoriesTable();
+                
+            } catch (error) {
+                console.error('Failed to save subcategory:', error);
+                showNotification('Failed to save sub category', 'error');
+            }
+        });
+    }
+
+    // Cancel new subcategory
+    if (cancelSubCategoryBtn) {
+        cancelSubCategoryBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            subCategory.value = '';
+            newSubCategoryInput.style.display = 'none';
+            customSubCategory.value = '';
+        });
+    }
+
+    // ============ BRAND ADD NEW ============
+    const brandSelect = document.getElementById('brandSelect');
+    const newBrandInput = document.getElementById('newBrandInput');
+    const customBrand = document.getElementById('customBrand');
+    const saveBrandBtn = document.getElementById('saveBrandBtn');
+    const cancelBrandBtn = document.getElementById('cancelBrandBtn');
+
+    // Brand - Show input when "Add New" is selected
+    if (brandSelect) {
+        brandSelect.addEventListener('change', function() {
+            if (this.value === '__add_new__') {
+                newBrandInput.classList.add('active');
+                customBrand.focus();
+            } else {
+                newBrandInput.classList.remove('active');
+            }
+        });
+    }
+
+    // Save new brand
+    if (saveBrandBtn) {
+        saveBrandBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const newBrandName = customBrand.value.trim();
+            if (!newBrandName) {
+                showNotification('Please enter a brand name', 'error');
+                return;
+            }
+            
+            // Add to dropdown
+            const option = document.createElement('option');
+            option.value = newBrandName;
+            option.textContent = newBrandName;
+            
+            // Insert before "Add New" option
+            const addNewOpt = brandSelect.querySelector('option[value="__add_new__"]');
+            brandSelect.insertBefore(option, addNewOpt);
+            
+            // Select the new option
+            brandSelect.value = newBrandName;
+            newBrandInput.classList.remove('active');
+            customBrand.value = '';
+            
+            showNotification('Brand added successfully!', 'success');
+        });
+    }
+
+    // Cancel new brand
+    if (cancelBrandBtn) {
+        cancelBrandBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            brandSelect.value = '';
+            newBrandInput.classList.remove('active');
+            customBrand.value = '';
+        });
+    }
+
+    // ============ FRAME TYPE ADD NEW ============
+    const frameTypeSelect = document.getElementById('frameTypeSelect');
+    const newFrameTypeInput = document.getElementById('newFrameTypeInput');
+    const customFrameType = document.getElementById('customFrameType');
+    const saveFrameTypeBtn = document.getElementById('saveFrameTypeBtn');
+    const cancelFrameTypeBtn = document.getElementById('cancelFrameTypeBtn');
+
+    // Frame Type - Show input when "Add New" is selected
+    if (frameTypeSelect) {
+        frameTypeSelect.addEventListener('change', function() {
+            if (this.value === '__add_new__') {
+                newFrameTypeInput.classList.add('active');
+                customFrameType.focus();
+            } else {
+                newFrameTypeInput.classList.remove('active');
+            }
+        });
+    }
+
+    // Save new frame type
+    if (saveFrameTypeBtn) {
+        saveFrameTypeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const newFrameTypeName = customFrameType.value.trim();
+            if (!newFrameTypeName) {
+                showNotification('Please enter a frame type', 'error');
+                return;
+            }
+            
+            // Add to dropdown
+            const option = document.createElement('option');
+            option.value = newFrameTypeName.toLowerCase().replace(/\s+/g, '-');
+            option.textContent = newFrameTypeName;
+            
+            // Insert before "Add New" option
+            const addNewOpt = frameTypeSelect.querySelector('option[value="__add_new__"]');
+            frameTypeSelect.insertBefore(option, addNewOpt);
+            
+            // Select the new option
+            frameTypeSelect.value = newFrameTypeName.toLowerCase().replace(/\s+/g, '-');
+            newFrameTypeInput.classList.remove('active');
+            customFrameType.value = '';
+            
+            showNotification('Frame type added successfully!', 'success');
+        });
+    }
+
+    // Cancel new frame type
+    if (cancelFrameTypeBtn) {
+        cancelFrameTypeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            frameTypeSelect.value = '';
+            newFrameTypeInput.classList.remove('active');
+            customFrameType.value = '';
+        });
     }
 }
 
@@ -126,6 +385,14 @@ async function updateDashboardStats() {
         const ordersElement = document.querySelector('.stat-card:nth-child(1) .stat-number');
         if (ordersElement) {
             ordersElement.textContent = orders.length;
+        }
+
+        // Update orders badge in header
+        const ordersBadge = document.getElementById('ordersBadge');
+        if (ordersBadge) {
+            const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
+            ordersBadge.textContent = pendingOrders;
+            ordersBadge.style.display = pendingOrders > 0 ? 'flex' : 'none';
         }
 
         // Total Revenue
@@ -166,7 +433,7 @@ async function loadProductsTable() {
         if (products.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                    <td colspan="10" style="text-align: center; padding: 40px; color: #999;">
                         <i class="fas fa-box" style="font-size: 48px; margin-bottom: 10px; opacity: 0.3;"></i>
                         <p>No products found</p>
                     </td>
@@ -178,21 +445,23 @@ async function loadProductsTable() {
         products.forEach(product => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><strong>#${product.id}</strong></td>
                 <td>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <img src="${product.image || 'https://via.placeholder.com/40x40'}" alt="${product.name}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">
-                        <div>
-                            <div style="font-weight: 500;">${product.name}</div>
-                            <div style="font-size: 12px; color: #666;">${product.brand || ''}</div>
-                        </div>
-                    </div>
+                    <img src="${getFirstImage(product.image) || 'https://via.placeholder.com/50x50'}" alt="${product.name}" style="width: 50px; height: 50px; border-radius: 6px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/50x50?text=No+Image'">
                 </td>
-                <td>${product.category || ''}</td>
-                <td>₹${parseFloat(product.price || 0).toLocaleString()}</td>
-                <td>${product.stock || 0}</td>
-                <td><span class="status-badge ${product.status || 'active'}">${product.status || 'Active'}</span></td>
+                <td>
+                    <div style="font-weight: 600;">${product.name}</div>
+                    <div style="font-size: 11px; color: #888;">#${product.id}</div>
+                </td>
+                <td>
+                    <div>${product.category || '-'}</div>
+                    <div style="font-size: 11px; color: #666;">${product.subcategory || ''}</div>
+                </td>
+                <td>${product.hsn || '-'}</td>
+                <td>${product.brand || '-'}</td>
+                <td><strong>₹${parseFloat(product.price || 0).toLocaleString()}</strong></td>
                 <td>${product.gst || 0}%</td>
+                <td>${product.stock || 0}</td>
+                <td><span class="status-badge ${(product.status || 'active').toLowerCase()}">${product.status || 'Active'}</span></td>
                 <td>
                     <div class="action-btns">
                         <button class="action-btn edit" onclick="editProduct(${product.id})" title="Edit Product">
@@ -211,7 +480,7 @@ async function loadProductsTable() {
         console.error('Failed to load products table:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 40px; color: #f44336;">
+                <td colspan="10" style="text-align: center; padding: 40px; color: #f44336;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 10px;"></i>
                     <p>Failed to load products</p>
                 </td>
@@ -465,6 +734,10 @@ async function addProduct() {
     if (!form) return;
 
     const formData = new FormData(form);
+    
+    // Use captured images array if available, otherwise use form input
+    let imageValue = capturedImages.length > 0 ? capturedImages.join(',') : formData.get('image');
+    
     const productData = {
         name: formData.get('name'),
         category: formData.get('category'),
@@ -478,10 +751,12 @@ async function addProduct() {
         stock: parseInt(formData.get('stock')) || 0,
         color: formData.get('color'),
         status: formData.get('status') || 'active',
-        image: formData.get('image'),
+        image: imageValue,
         video: formData.get('video'),
         description: formData.get('description')
     };
+
+    console.log('Adding product with images:', imageValue);
 
     try {
         await apiCall('api_products.php?action=create', {
@@ -492,6 +767,8 @@ async function addProduct() {
         showNotification('Product added successfully!', 'success');
         closeModal('addProductModal');
         form.reset();
+        capturedImages = []; // Clear captured images after successful save
+        updateImagePreview();
         loadProductsTable();
         updateDashboardStats();
 
@@ -517,14 +794,76 @@ async function editProduct(id) {
         const form = document.getElementById('addProductForm');
         if (form) {
             form.elements['name'].value = product.name || '';
-            form.elements['category'].value = product.category || '';
+            
+            // Handle Brand dropdown - add option if not exists
+            const brandSelect = form.elements['brand'];
+            const brandValue = product.brand || '';
+            if (brandValue && brandSelect) {
+                let optionExists = Array.from(brandSelect.options).some(opt => opt.value === brandValue);
+                if (!optionExists && brandValue) {
+                    // Add the brand option before the "Add New" option
+                    const addNewOption = brandSelect.querySelector('option[value="__add_new__"]');
+                    const newOption = document.createElement('option');
+                    newOption.value = brandValue;
+                    newOption.textContent = brandValue;
+                    if (addNewOption) {
+                        brandSelect.insertBefore(newOption, addNewOption);
+                    } else {
+                        brandSelect.appendChild(newOption);
+                    }
+                }
+                brandSelect.value = brandValue;
+                console.log('Setting Brand value:', brandValue);
+            }
+            
+            // Handle Category dropdown - add option if not exists
+            const categorySelect = form.elements['category'];
+            const categoryValue = product.category || '';
+            if (categoryValue && categorySelect) {
+                let optionExists = Array.from(categorySelect.options).some(opt => opt.value === categoryValue);
+                if (!optionExists && categoryValue) {
+                    // Add the category option before the "Add New" option
+                    const addNewOption = categorySelect.querySelector('option[value="__add_new__"]');
+                    const newOption = document.createElement('option');
+                    newOption.value = categoryValue;
+                    newOption.textContent = categoryValue;
+                    if (addNewOption) {
+                        categorySelect.insertBefore(newOption, addNewOption);
+                    } else {
+                        categorySelect.appendChild(newOption);
+                    }
+                }
+                categorySelect.value = categoryValue;
+                console.log('Setting Category value:', categoryValue);
+            }
+            
             form.elements['subcategory'].value = product.subcategory || '';
             form.elements['frametype'].value = product.frametype || '';
             form.elements['hsn'].value = product.hsn || '';
-            form.elements['brand'].value = product.brand || '';
             form.elements['price'].value = product.price || '';
             form.elements['originalPrice'].value = product.original_price || '';
-            form.elements['gst'].value = product.gst || 12;
+            
+            // Handle GST dropdown - convert to string and match
+            const gstSelect = form.elements['gst'];
+            const gstValue = (product.gst !== undefined && product.gst !== null && product.gst !== '') ? String(product.gst) : '12';
+            if (gstSelect) {
+                // Check if option exists, if not try to match numeric value
+                let optionExists = Array.from(gstSelect.options).some(opt => opt.value === gstValue);
+                if (optionExists) {
+                    gstSelect.value = gstValue;
+                } else {
+                    // Try matching without decimals (e.g., "12.00" -> "12")
+                    const gstInt = String(parseInt(gstValue));
+                    optionExists = Array.from(gstSelect.options).some(opt => opt.value === gstInt);
+                    if (optionExists) {
+                        gstSelect.value = gstInt;
+                    } else {
+                        gstSelect.value = '12'; // Default fallback
+                    }
+                }
+                console.log('Setting GST value:', gstSelect.value, 'from product.gst:', product.gst);
+            }
+            
             form.elements['stock'].value = product.stock || 0;
             form.elements['color'].value = product.color || '';
             form.elements['status'].value = product.status || 'active';
@@ -558,6 +897,10 @@ async function updateProduct(id) {
     if (!form) return;
 
     const formData = new FormData(form);
+    
+    // Use captured images array if available, otherwise use form input
+    let imageValue = capturedImages.length > 0 ? capturedImages.join(',') : formData.get('image');
+    
     const productData = {
         name: formData.get('name'),
         category: formData.get('category'),
@@ -571,10 +914,12 @@ async function updateProduct(id) {
         stock: parseInt(formData.get('stock')) || 0,
         color: formData.get('color'),
         status: formData.get('status') || 'active',
-        image: formData.get('image'),
+        image: imageValue,
         video: formData.get('video'),
         description: formData.get('description')
     };
+
+    console.log('Updating product with images:', imageValue);
 
     try {
         await apiCall(`api_products.php?action=update&id=${id}`, {
@@ -585,6 +930,8 @@ async function updateProduct(id) {
         showNotification('Product updated successfully!', 'success');
         closeModal('addProductModal');
         form.reset();
+        capturedImages = []; // Clear captured images after successful save
+        updateImagePreview();
         loadProductsTable();
         updateDashboardStats();
 
@@ -858,6 +1205,11 @@ async function capturePhoto() {
     const video = document.getElementById('cameraPreview');
     const canvas = document.getElementById('photoCanvas');
     
+    if (!video || !video.videoWidth) {
+        showNotification('Camera not ready. Please wait...', 'error');
+        return;
+    }
+    
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -866,8 +1218,8 @@ async function capturePhoto() {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Convert to data URL
-    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+    // Convert to data URL with good quality
+    const base64Image = canvas.toDataURL('image/jpeg', 0.85);
     
     showNotification('Uploading photo...', 'info');
     
@@ -882,10 +1234,12 @@ async function capturePhoto() {
         });
         
         const result = await response.json();
+        console.log('Upload result:', result);
         
         if (result.success && result.url) {
             // Add server URL to images array
             capturedImages.push(result.url);
+            console.log('Captured images:', capturedImages);
             
             // Update preview
             updateImagePreview();
@@ -992,15 +1346,24 @@ function removeImage(index) {
 function updateImagePreview() {
     const previewContainer = document.getElementById('previewImage');
     const imagePreview = document.getElementById('imagePreview');
+    const imageUrlInput = document.getElementById('imageUrlInput');
     
     if (capturedImages.length === 0) {
-        previewContainer.innerHTML = '<span style="color: #999;">No photos yet</span>';
+        previewContainer.innerHTML = '<span style="color: #999; padding: 20px; display: block; text-align: center;">No photos captured yet</span>';
+        previewContainer.style.cssText = 'display: flex; align-items: center; justify-content: center; min-height: 100px; border: 2px dashed #ddd; border-radius: 8px; background: #f9f9f9;';
         if (imagePreview) imagePreview.style.display = 'none';
+        if (imageUrlInput) imageUrlInput.value = '';
         return;
     }
     
     // Show the preview section
     if (imagePreview) imagePreview.style.display = 'block';
+    
+    // Update the hidden input
+    if (imageUrlInput) imageUrlInput.value = capturedImages.join(',');
+    
+    // Set grid layout for previews
+    previewContainer.style.cssText = 'display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;';
     
     // Clear existing previews
     previewContainer.innerHTML = '';
@@ -1013,8 +1376,9 @@ function updateImagePreview() {
             width: 100%;
             padding-bottom: 100%;
             overflow: hidden;
-            border-radius: 8px;
+            border-radius: 10px;
             background: #f0f0f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         `;
         
         const imgContainer = document.createElement('div');
@@ -1028,12 +1392,14 @@ function updateImagePreview() {
         
         const img = document.createElement('img');
         img.src = imageData;
+        img.onerror = function() {
+            this.src = 'https://via.placeholder.com/150x150?text=Error';
+        };
         img.style.cssText = `
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            border-radius: 10px;
         `;
         
         const removeBtn = document.createElement('button');
@@ -1041,23 +1407,27 @@ function updateImagePreview() {
         removeBtn.innerHTML = '×';
         removeBtn.style.cssText = `
             position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(244, 67, 54, 0.9);
+            top: 6px;
+            right: 6px;
+            background: rgba(244, 67, 54, 0.95);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 28px;
-            height: 28px;
+            width: 26px;
+            height: 26px;
             cursor: pointer;
-            font-size: 20px;
+            font-size: 18px;
             line-height: 1;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
         `;
+        removeBtn.onmouseover = () => removeBtn.style.transform = 'scale(1.1)';
+        removeBtn.onmouseout = () => removeBtn.style.transform = 'scale(1)';
         removeBtn.onclick = (e) => {
             e.preventDefault();
             removeImage(index);
@@ -1136,6 +1506,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (submitBtn) {
                 submitBtn.textContent = 'Add Product';
             }
+            // Hide custom category/subcategory inputs
+            const newCategoryInput = document.getElementById('newCategoryInput');
+            const newSubCategoryInput = document.getElementById('newSubCategoryInput');
+            if (newCategoryInput) newCategoryInput.style.display = 'none';
+            if (newSubCategoryInput) newSubCategoryInput.style.display = 'none';
+            
             // Populate subcategory dropdown from database
             await populateSubcategoryDropdown();
             openModal('addProductModal');
@@ -1185,8 +1561,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const cancelButtons = document.querySelectorAll('.modal .btn-secondary');
     cancelButtons.forEach(btn => {
-        // Skip camera and image buttons
-        if (btn.id === 'openCameraBtn' || btn.id === 'uploadImageBtn' || btn.id === 'closeCameraBtn') {
+        // Skip camera, image, and category buttons
+        if (btn.id === 'openCameraBtn' || btn.id === 'uploadImageBtn' || btn.id === 'closeCameraBtn' ||
+            btn.id === 'cancelCategoryBtn' || btn.id === 'cancelSubCategoryBtn') {
             return;
         }
         btn.addEventListener('click', function() {
@@ -1202,6 +1579,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize camera feature
     initializeCameraFeature();
+
+    // Initialize category add new functionality
+    initializeCategoryAddNew();
 
     // Handle modal outside clicks
     window.addEventListener('click', function(e) {
@@ -1790,7 +2170,250 @@ style.textContent = `
     }
     @keyframes slideOut {
         from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 0; }
     }
 `;
 document.head.appendChild(style);
+
+// =============================================
+// SEARCH FUNCTIONALITY
+// =============================================
+
+// Clear search input
+function clearSearch(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.value = '';
+        input.dispatchEvent(new Event('keyup'));
+        
+        // Hide clear button
+        const clearBtn = input.parentElement.querySelector('.clear-search');
+        if (clearBtn) clearBtn.style.display = 'none';
+    }
+}
+
+// Show/hide clear button based on input value
+function updateClearButton(input) {
+    const clearBtn = input.parentElement.querySelector('.clear-search');
+    if (clearBtn) {
+        clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
+    }
+}
+
+// Dashboard Search - searches recent orders table
+function searchDashboard(query) {
+    const input = document.getElementById('dashboardSearch');
+    updateClearButton(input);
+    
+    query = query.toLowerCase().trim();
+    const tableBody = document.querySelector('#dashboard .recent-orders tbody');
+    
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr');
+    let hasResults = false;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let rowText = '';
+        cells.forEach(cell => {
+            rowText += cell.textContent.toLowerCase() + ' ';
+        });
+        
+        if (query === '' || rowText.includes(query)) {
+            row.style.display = '';
+            hasResults = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Show no results message if needed
+    showNoResultsMessage(tableBody.closest('.table-container') || tableBody.closest('.recent-orders'), hasResults, query);
+}
+
+// Products Search
+function searchProducts(query) {
+    const input = document.getElementById('productSearch');
+    updateClearButton(input);
+    
+    query = query.toLowerCase().trim();
+    const tableBody = document.getElementById('productsTableBody');
+    
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr');
+    let hasResults = false;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let rowText = '';
+        cells.forEach(cell => {
+            rowText += cell.textContent.toLowerCase() + ' ';
+        });
+        
+        if (query === '' || rowText.includes(query)) {
+            row.style.display = '';
+            hasResults = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    showNoResultsMessage(tableBody.closest('.table-container'), hasResults, query);
+}
+
+// Orders Search
+function searchOrders(query) {
+    const input = document.getElementById('orderSearch');
+    updateClearButton(input);
+    
+    query = query.toLowerCase().trim();
+    const tableBody = document.getElementById('ordersTableBody');
+    
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr');
+    let hasResults = false;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let rowText = '';
+        cells.forEach(cell => {
+            rowText += cell.textContent.toLowerCase() + ' ';
+        });
+        
+        if (query === '' || rowText.includes(query)) {
+            row.style.display = '';
+            hasResults = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    showNoResultsMessage(tableBody.closest('.table-container'), hasResults, query);
+}
+
+// Purchases Search
+function searchPurchases(query) {
+    const input = document.getElementById('purchaseSearch');
+    updateClearButton(input);
+    
+    query = query.toLowerCase().trim();
+    const tableBody = document.getElementById('purchasesTableBody');
+    
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr');
+    let hasResults = false;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let rowText = '';
+        cells.forEach(cell => {
+            rowText += cell.textContent.toLowerCase() + ' ';
+        });
+        
+        if (query === '' || rowText.includes(query)) {
+            row.style.display = '';
+            hasResults = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    showNoResultsMessage(tableBody.closest('.table-container'), hasResults, query);
+}
+
+// Customers Search
+function searchCustomers(query) {
+    const input = document.getElementById('customerSearch');
+    updateClearButton(input);
+    
+    query = query.toLowerCase().trim();
+    const tableBody = document.getElementById('customersTableBody');
+    
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr');
+    let hasResults = false;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let rowText = '';
+        cells.forEach(cell => {
+            rowText += cell.textContent.toLowerCase() + ' ';
+        });
+        
+        if (query === '' || rowText.includes(query)) {
+            row.style.display = '';
+            hasResults = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    showNoResultsMessage(tableBody.closest('.table-container'), hasResults, query);
+}
+
+// Categories Search
+function searchCategories(query) {
+    const input = document.getElementById('categorySearch');
+    updateClearButton(input);
+    
+    query = query.toLowerCase().trim();
+    const categoriesGrid = document.getElementById('categoriesGrid');
+    
+    if (!categoriesGrid) return;
+    
+    const cards = categoriesGrid.querySelectorAll('.category-card');
+    let hasResults = false;
+    
+    cards.forEach(card => {
+        const cardText = card.textContent.toLowerCase();
+        
+        if (query === '' || cardText.includes(query)) {
+            card.style.display = '';
+            hasResults = true;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    showNoResultsMessage(categoriesGrid, hasResults, query, true);
+}
+
+// Show "No Results" message
+function showNoResultsMessage(container, hasResults, query, isGrid = false) {
+    if (!container) return;
+    
+    // Remove existing no results message
+    const existingMsg = container.querySelector('.no-results-message');
+    if (existingMsg) {
+        existingMsg.remove();
+    }
+    
+    // Add no results message if no results and query is not empty
+    if (!hasResults && query !== '') {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = 'no-results-message';
+        noResultsDiv.innerHTML = `
+            <i class="fas fa-search"></i>
+            <p>No results found for "<strong>${escapeHtml(query)}</strong>"</p>
+            <p style="font-size: 12px; margin-top: 5px;">Try a different search term</p>
+        `;
+        
+        if (isGrid) {
+            container.appendChild(noResultsDiv);
+        } else {
+            container.appendChild(noResultsDiv);
+        }
+    }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

@@ -6,7 +6,13 @@
 
 session_start();
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+// Handle CORS - allow same origin and localhost
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+if (strpos($origin, 'localhost') !== false || $origin === '') {
+    header('Access-Control-Allow-Origin: ' . ($origin ?: 'http://localhost'));
+} else {
+    header('Access-Control-Allow-Origin: http://localhost');
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');
@@ -417,17 +423,28 @@ function deleteAddress($addressId) {
 function getUserOrders() {
     global $conn;
     
+    // Debug: Log session info
+    error_log("getUserOrders called - Session user_id: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
+    
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Not authenticated', 'orders' => []]);
+        return;
+    }
+    
+    $userId = $_SESSION['user_id'];
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
     $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
     
     try {
         // Get user info for matching orders by customer_name as fallback
         $userStmt = $conn->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
-        $userStmt->execute([$_SESSION['user_id']]);
+        $userStmt->execute([$userId]);
         $user = $userStmt->fetch(PDO::FETCH_ASSOC);
         
         $fullName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : '';
         $email = $user ? $user['email'] : '';
+        
+        error_log("getUserOrders - User: $fullName ($email), ID: $userId");
         
         // Get orders by user_id OR by matching customer_name/email (for orders placed before user_id was saved)
         $sql = "SELECT o.*, COUNT(oi.id) as item_count 
@@ -439,14 +456,26 @@ function getUserOrders() {
                 ORDER BY o.created_at DESC 
                 LIMIT $limit OFFSET $offset";
         $stmt = $conn->prepare($sql);
-        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
+        $stmt->execute([$userId, $fullName, $email]);
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Fetch items for each order
+        foreach ($orders as &$order) {
+            $itemStmt = $conn->prepare("SELECT oi.*, p.image as product_image 
+                                        FROM order_items oi 
+                                        LEFT JOIN products p ON oi.product_id = p.id 
+                                        WHERE oi.order_id = ?");
+            $itemStmt->execute([$order['id']]);
+            $order['items'] = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        error_log("getUserOrders - Found " . count($orders) . " orders");
         
         // Get total count
         $stmt = $conn->prepare("SELECT COUNT(DISTINCT o.id) FROM orders o 
                                WHERE o.user_id = ? 
                                   OR (o.user_id IS NULL AND (o.customer_name = ? OR o.customer_name = ?))");
-        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
+        $stmt->execute([$userId, $fullName, $email]);
         $totalCount = $stmt->fetchColumn();
         
         echo json_encode([
@@ -454,7 +483,12 @@ function getUserOrders() {
             'orders' => $orders,
             'total' => (int)$totalCount,
             'limit' => $limit,
-            'offset' => $offset
+            'offset' => $offset,
+            'debug' => [
+                'user_id' => $userId,
+                'full_name' => $fullName,
+                'email' => $email
+            ]
         ]);
         
     } catch (PDOException $e) {

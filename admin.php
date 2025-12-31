@@ -76,15 +76,11 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                     <h1 id="pageTitle">Dashboard</h1>
                 </div>
                 <div class="header-right">
-                    <div class="search-box">
-                        <input type="text" placeholder="Search...">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <div class="notifications">
+                    <div class="notifications" onclick="showSection('orders')" style="cursor:pointer;" title="View Orders">
                         <i class="fas fa-bell"></i>
-                        <span class="badge">5</span>
+                        <span class="badge" id="ordersBadge">0</span>
                     </div>
-                    <div class="admin-profile">
+                    <div class="admin-profile" onclick="showSection('settings')" style="cursor:pointer;" title="Settings">
                         <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($adminUsername); ?>&background=00bac7&color=fff" alt="<?php echo htmlspecialchars($adminUsername); ?>">
                         <span><?php echo htmlspecialchars($adminUsername); ?></span>
                     </div>
@@ -93,6 +89,13 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
 
             <!-- Dashboard Section -->
             <section id="dashboard" class="content-section active">
+                <div class="section-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="dashboardSearch" placeholder="Search orders, products, customers..." onkeyup="searchDashboard(this.value)">
+                        <button class="clear-search" onclick="clearSearch('dashboardSearch')" style="display:none;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon blue">
@@ -225,6 +228,14 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                     </div>
                 </div>
 
+                <div class="section-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="purchaseSearch" placeholder="Search by invoice, supplier, product..." onkeyup="searchPurchases(this.value)">
+                        <button class="clear-search" onclick="clearSearch('purchaseSearch')" style="display:none;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
                 <div class="filters-bar">
                     <select id="purchaseStatusFilter">
                         <option value="all">All</option>
@@ -262,187 +273,145 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                 </div>
             </section>
 
-            <!-- Purchase Modal -->
+            <!-- Purchase Modal - Enhanced with Multiple Products -->
             <div id="purchaseModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10003; overflow-y:auto; padding:20px;">
-                <div style="background:white; width:900px; max-width:95%; border-radius:8px; padding:24px; position:relative; margin:auto; margin-top:20px; margin-bottom:20px; box-shadow:0 4px 20px rgba(0,0,0,0.15);">
-                    <button onclick="closePurchaseModal()" style="position:absolute; right:16px; top:16px; border:none; background:transparent; font-size:20px; cursor:pointer;"><i class="fas fa-times"></i></button>
+                <div style="background:white; width:1100px; max-width:95%; border-radius:8px; padding:24px; padding-bottom:100px; position:relative; margin:auto; margin-top:20px; margin-bottom:40px; box-shadow:0 4px 20px rgba(0,0,0,0.15); max-height:calc(100vh - 80px); overflow-y:auto;">
+                    <button onclick="closePurchaseModal()" style="position:absolute; right:16px; top:16px; border:none; background:transparent; font-size:20px; cursor:pointer; z-index:10;"><i class="fas fa-times"></i></button>
                     <h3 style="margin-top:0; color:#00bac7; border-bottom:2px solid #00bac7; padding-bottom:10px;">
-                        <i class="fas fa-truck-loading"></i> Add New Purchase
+                        <i class="fas fa-truck-loading"></i> Add New Purchase Bill
                     </h3>
                     
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-                        <!-- Left Column -->
+                    <!-- Supplier Information Section -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:15px; margin-bottom:20px;">
                         <div>
-                            <h4 style="color:#333; margin-bottom:15px;">Supplier Information</h4>
-                            
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-user"></i> Supplier Name <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseSupplier" type="text" placeholder="Enter supplier name" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                            <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                <i class="fas fa-user"></i> Supplier Name <span style="color:red;">*</span>
+                            </label>
+                            <input id="purchaseSupplier" type="text" placeholder="Supplier name" required
+                                   style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                        </div>
+                        <div>
+                            <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                <i class="fas fa-phone"></i> Supplier Phone
+                            </label>
+                            <input id="purchaseSupplierPhone" type="tel" placeholder="Phone number"
+                                   style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                        </div>
+                        <div>
+                            <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                <i class="fas fa-map-marker-alt"></i> City <span style="color:red;">*</span>
+                            </label>
+                            <input id="purchaseCity" type="text" placeholder="City" required
+                                   style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                        </div>
+                        <div>
+                            <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                <i class="fas fa-file-invoice"></i> Invoice Number
+                            </label>
+                            <input id="purchaseInvoiceNumber" type="text" placeholder="INV-XXXX"
+                                   style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                        </div>
+                    </div>
+
+                    <!-- Products Section Header -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin:20px 0 15px; padding:10px 15px; background:#e3f2fd; border-radius:6px;">
+                        <h4 style="color:#1976d2; margin:0;"><i class="fas fa-boxes"></i> Product Items</h4>
+                        <button type="button" onclick="addPurchaseProductRow()" style="background:#00bac7; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:13px;">
+                            <i class="fas fa-plus"></i> Add Product
+                        </button>
+                    </div>
+
+                    <!-- Products Table -->
+                    <div style="overflow-x:auto; margin-bottom:20px;">
+                        <table style="width:100%; border-collapse:collapse; min-width:900px;" id="purchaseProductsTable">
+                            <thead>
+                                <tr style="background:#f8f9fa;">
+                                    <th style="padding:12px 8px; text-align:left; font-size:12px; color:#555; border-bottom:2px solid #dee2e6;">Product Name *</th>
+                                    <th style="padding:12px 8px; text-align:left; font-size:12px; color:#555; border-bottom:2px solid #dee2e6;">Category *</th>
+                                    <th style="padding:12px 8px; text-align:left; font-size:12px; color:#555; border-bottom:2px solid #dee2e6;">Sub Category</th>
+                                    <th style="padding:12px 8px; text-align:left; font-size:12px; color:#555; border-bottom:2px solid #dee2e6;">HSN Code</th>
+                                    <th style="padding:12px 8px; text-align:center; font-size:12px; color:#555; border-bottom:2px solid #dee2e6; width:80px;">Qty *</th>
+                                    <th style="padding:12px 8px; text-align:right; font-size:12px; color:#555; border-bottom:2px solid #dee2e6; width:100px;">Purchase ₹ *</th>
+                                    <th style="padding:12px 8px; text-align:right; font-size:12px; color:#555; border-bottom:2px solid #dee2e6; width:100px;">Sell ₹ *</th>
+                                    <th style="padding:12px 8px; text-align:center; font-size:12px; color:#555; border-bottom:2px solid #dee2e6; width:80px;">GST %</th>
+                                    <th style="padding:12px 8px; text-align:right; font-size:12px; color:#555; border-bottom:2px solid #dee2e6; width:100px;">Amount</th>
+                                    <th style="padding:12px 8px; text-align:center; font-size:12px; color:#555; border-bottom:2px solid #dee2e6; width:50px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchaseProductsBody">
+                                <!-- Product rows will be added here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Totals and Payment Section -->
+                    <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px; margin-top:20px;">
+                        <!-- Left Column - Payment & Notes -->
+                        <div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom:15px;">
+                                <div>
+                                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                        <i class="fas fa-calendar"></i> Purchase Date <span style="color:red;">*</span>
+                                    </label>
+                                    <input id="purchaseDate" type="date" required
+                                           style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                                </div>
+                                <div>
+                                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                        <i class="fas fa-credit-card"></i> Payment Method
+                                    </label>
+                                    <select id="purchasePaymentMethod" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;">
+                                        <option value="Cash">Cash</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Cheque">Cheque</option>
+                                        <option value="Credit">Credit</option>
+                                        <option value="UPI">UPI</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                        <i class="fas fa-info-circle"></i> Status
+                                    </label>
+                                    <select id="purchaseStatus" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;">
+                                        <option value="pending">Pending</option>
+                                        <option value="received" selected>Received</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
                             </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-phone"></i> Supplier Phone
+                            <div>
+                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555; font-size:13px;">
+                                    <i class="fas fa-sticky-note"></i> Notes
                                 </label>
-                                <input id="purchaseSupplierPhone" type="tel" placeholder="Enter phone number"
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-envelope"></i> Supplier Email
-                                </label>
-                                <input id="purchaseSupplierEmail" type="email" placeholder="Enter email address"
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-map-marker-alt"></i> City <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseCity" type="text" placeholder="Enter city" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
-                            </div>
-
-                            <h4 style="color:#333; margin:20px 0 15px;">Product Details</h4>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-box"></i> Product Name <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseProductName" type="text" placeholder="Enter product name" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-tags"></i> Category <span style="color:red;">*</span>
-                                </label>
-                                <select id="purchaseCategory" required style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;">
-                                    <option value="">Select Category</option>
-                                    <option value="Eyeglasses">Eyeglasses</option>
-                                    <option value="Sunglasses">Sunglasses</option>
-                                    <option value="Contact Lenses">Contact Lenses</option>
-                                    <option value="Kids Glasses">Kids Glasses</option>
-                                    <option value="Accessories">Accessories</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-list-ol"></i> Quantity <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseQuantity" type="number" min="1" placeholder="Enter quantity" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" 
-                                       onchange="calculatePurchaseTotal()" />
+                                <textarea id="purchaseNotes" rows="2" placeholder="Additional notes (optional)"
+                                          style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px; resize:vertical;"></textarea>
                             </div>
                         </div>
 
-                        <!-- Right Column -->
-                        <div>
-                            <h4 style="color:#333; margin-bottom:15px;">Pricing & Payment</h4>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-rupee-sign"></i> Purchase Price (per unit) <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseCostPrice" type="number" step="0.01" min="0" placeholder="0.00" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;"
-                                       onchange="calculatePurchaseTotal()" />
+                        <!-- Right Column - Totals -->
+                        <div style="background:#f8f9fa; padding:15px; border-radius:8px; border:1px solid #e0e0e0;">
+                            <h4 style="margin:0 0 15px; color:#333; font-size:14px;">Bill Summary</h4>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed #dee2e6;">
+                                <span style="color:#666; font-size:13px;">Total Items:</span>
+                                <span style="font-weight:600;" id="purchaseTotalItems">0</span>
                             </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-tag"></i> Sell Price (per unit) <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseSellingPrice" type="number" step="0.01" min="0" placeholder="0.00" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <span style="color:#666; font-size:13px;">Subtotal:</span>
+                                <span style="font-weight:600;" id="purchaseSubtotal">₹0.00</span>
                             </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-percent"></i> GST Percentage <span style="color:red;">*</span>
-                                </label>
-                                <select id="purchaseGst" required style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;"
-                                        onchange="calculatePurchaseTotal()">
-                                    <option value="0">0% - No GST</option>
-                                    <option value="5">5% - Essential Goods</option>
-                                    <option value="12">12% - Standard</option>
-                                    <option value="18" selected>18% - Most Products</option>
-                                    <option value="28">28% - Luxury Goods</option>
-                                </select>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <span style="color:#666; font-size:13px;">GST Amount:</span>
+                                <span style="font-weight:600; color:#ff6b6b;" id="purchaseGstAmount">₹0.00</span>
                             </div>
-
-                            <div style="background:#f8f9fa; padding:12px; border-radius:6px; margin-bottom:15px;">
-                                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                                    <span style="color:#666;">Subtotal:</span>
-                                    <span style="font-weight:600;" id="purchaseSubtotal">₹0.00</span>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                                    <span style="color:#666;">GST Amount:</span>
-                                    <span style="font-weight:600; color:#ff6b6b;" id="purchaseGstAmount">₹0.00</span>
-                                </div>
-                                <div style="display:flex; justify-content:space-between; padding-top:8px; border-top:2px solid #dee2e6;">
-                                    <span style="font-weight:700; color:#333;">Total Amount:</span>
-                                    <span style="font-weight:700; font-size:18px; color:#00bac7;" id="purchaseTotalAmount">₹0.00</span>
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-credit-card"></i> Payment Method
-                                </label>
-                                <select id="purchasePaymentMethod" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;">
-                                    <option value="Cash">Cash</option>
-                                    <option value="Bank Transfer">Bank Transfer</option>
-                                    <option value="Cheque">Cheque</option>
-                                    <option value="Credit">Credit</option>
-                                    <option value="UPI">UPI</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-file-invoice"></i> Invoice Number
-                                </label>
-                                <input id="purchaseInvoiceNumber" type="text" placeholder="INV-XXXX"
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-calendar"></i> Purchase Date <span style="color:red;">*</span>
-                                </label>
-                                <input id="purchaseDate" type="date" required
-                                       style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;" />
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-info-circle"></i> Status
-                                </label>
-                                <select id="purchaseStatus" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px;">
-                                    <option value="pending">Pending</option>
-                                    <option value="received" selected>Received</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
-                            </div>
-
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; font-weight:600; margin-bottom:6px; color:#555;">
-                                    <i class="fas fa-sticky-note"></i> Notes
-                                </label>
-                                <textarea id="purchaseNotes" rows="3" placeholder="Additional notes (optional)"
-                                          style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:6px; font-size:14px; resize:vertical;"></textarea>
+                            <div style="display:flex; justify-content:space-between; padding-top:12px; border-top:2px solid #00bac7; margin-top:10px;">
+                                <span style="font-weight:700; color:#333;">Grand Total:</span>
+                                <span style="font-weight:700; font-size:20px; color:#00bac7;" id="purchaseTotalAmount">₹0.00</span>
                             </div>
                         </div>
                     </div>
 
-                    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px; padding-top:20px; border-top:1px solid #e0e0e0;">
+                    <!-- Modal Footer - Fixed at bottom -->
+                    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px; padding-top:20px; border-top:1px solid #e0e0e0; background:white; position:sticky; bottom:0;">
                         <button class="btn-secondary" onclick="closePurchaseModal()" style="padding:12px 24px;">
                             <i class="fas fa-times"></i> Cancel
                         </button>
@@ -460,6 +429,14 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                     <button class="btn-primary" id="addProductBtn">
                         <i class="fas fa-plus"></i> Add New Product
                     </button>
+                </div>
+
+                <div class="section-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="productSearch" placeholder="Search by name, brand, category, HSN..." onkeyup="searchProducts(this.value)">
+                        <button class="clear-search" onclick="clearSearch('productSearch')" style="display:none;"><i class="fas fa-times"></i></button>
+                    </div>
                 </div>
 
                 <div class="filters-bar">
@@ -514,12 +491,17 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                         <button class="btn-secondary" onclick="loadOrders()" style="margin-right: 10px;">
                             <i class="fas fa-sync-alt"></i> Refresh
                         </button>
-                        <button class="btn-secondary" onclick="alert('Orders in localStorage: ' + JSON.parse(localStorage.getItem('visionkart_orders') || '[]').length)">
-                            <i class="fas fa-info-circle"></i> Check Storage
-                        </button>
-                        <button class="btn-secondary" style="margin-left: 10px;">
+                        <button class="btn-secondary">
                             <i class="fas fa-download"></i> Export Orders
                         </button>
+                    </div>
+                </div>
+
+                <div class="section-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="orderSearch" placeholder="Search by Order ID, customer name, product..." onkeyup="searchOrders(this.value)">
+                        <button class="clear-search" onclick="clearSearch('orderSearch')" style="display:none;"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
 
@@ -563,6 +545,14 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                     </button>
                 </div>
 
+                <div class="section-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="customerSearch" placeholder="Search by name, email, phone..." onkeyup="searchCustomers(this.value)">
+                        <button class="clear-search" onclick="clearSearch('customerSearch')" style="display:none;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
@@ -591,6 +581,14 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                     <button class="btn-primary" id="addCategoryBtn">
                         <i class="fas fa-plus"></i> Add New Category
                     </button>
+                </div>
+
+                <div class="section-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="categorySearch" placeholder="Search categories..." onkeyup="searchCategories(this.value)">
+                        <button class="clear-search" onclick="clearSearch('categorySearch')" style="display:none;"><i class="fas fa-times"></i></button>
+                    </div>
                 </div>
 
                 <div class="categories-grid" id="categoriesGrid">
@@ -689,73 +687,110 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                 <span class="close">&times;</span>
             </div>
             <form id="addProductForm" class="modal-form">
+                <!-- Basic Information Section -->
+                <div class="form-section-title"><i class="fas fa-info-circle"></i> Basic Information</div>
+                
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Product Name</label>
-                        <input type="text" name="name" required>
+                        <label><i class="fas fa-box"></i> Product Name</label>
+                        <input type="text" name="name" placeholder="Enter product name" required>
                     </div>
                     <div class="form-group">
-                        <label>Brand</label>
-                        <select name="brand" required>
-                            <option value="">Select Brand</option>
-                            <option value="Vincent Chase">Vincent Chase</option>
-                            <option value="John Jacobs">John Jacobs</option>
-                            <option value="OJOS">OJOS</option>
-                            <option value="VisionKart Air">VisionKart Air</option>
-                        </select>
+                        <label><i class="fas fa-building"></i> Brand</label>
+                        <div class="brand-input-wrapper">
+                            <select name="brand" id="brandSelect" required>
+                                <option value="">Select Brand</option>
+                                <option value="Vincent Chase">Vincent Chase</option>
+                                <option value="John Jacobs">John Jacobs</option>
+                                <option value="OJOS">OJOS</option>
+                                <option value="VisionKart Air">VisionKart Air</option>
+                                <option value="__add_new__">+ Add New Brand</option>
+                            </select>
+                            <div id="newBrandInput">
+                                <input type="text" id="customBrand" placeholder="Enter new brand name">
+                                <button type="button" id="saveBrandBtn" class="btn-primary"><i class="fas fa-check"></i></button>
+                                <button type="button" id="cancelBrandBtn" class="btn-secondary"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Category</label>
-                        <select name="category" id="mainCategory" required>
-                            <option value="">Select Category</option>
-                            <option value="Eyeglasses">Eyeglasses</option>
-                            <option value="Sunglasses">Sunglasses</option>
-                            <option value="Contact Lenses">Contact Lenses</option>
-                            <option value="Accessories">Accessories</option>
-                        </select>
+                        <label><i class="fas fa-folder"></i> Category</label>
+                        <div class="category-input-wrapper">
+                            <select name="category" id="mainCategory" required>
+                                <option value="">Select Category</option>
+                                <option value="Eyeglasses">Eyeglasses</option>
+                                <option value="Sunglasses">Sunglasses</option>
+                                <option value="Contact Lenses">Contact Lenses</option>
+                                <option value="Accessories">Accessories</option>
+                                <option value="__add_new__">+ Add New Category</option>
+                            </select>
+                            <div id="newCategoryInput">
+                                <input type="text" id="customCategory" placeholder="Enter new category name">
+                                <button type="button" id="saveCategoryBtn" class="btn-primary"><i class="fas fa-check"></i></button>
+                                <button type="button" id="cancelCategoryBtn" class="btn-secondary"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Sub Category (Frame Shape)</label>
-                        <select name="subcategory" id="subCategory" required>
-                            <option value="">Select Sub Category</option>
-                            <!-- Will be populated from database -->
-                        </select>
+                        <label><i class="fas fa-tags"></i> Sub Category (Frame Shape)</label>
+                        <div class="subcategory-input-wrapper">
+                            <select name="subcategory" id="subCategory" required>
+                                <option value="">Select Sub Category</option>
+                                <option value="__add_new__">+ Add New Sub Category</option>
+                            </select>
+                            <div id="newSubCategoryInput">
+                                <input type="text" id="customSubCategory" placeholder="Enter new sub category name">
+                                <button type="button" id="saveSubCategoryBtn" class="btn-primary"><i class="fas fa-check"></i></button>
+                                <button type="button" id="cancelSubCategoryBtn" class="btn-secondary"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Frame Type</label>
-                        <select name="frametype" required>
-                            <option value="">Select Type</option>
-                            <option value="full-rim">Full Rim</option>
-                            <option value="half-rim">Half Rim</option>
-                            <option value="rimless">Rimless</option>
-                        </select>
+                        <label><i class="fas fa-glasses"></i> Frame Type</label>
+                        <div class="frametype-input-wrapper">
+                            <select name="frametype" id="frameTypeSelect" required>
+                                <option value="">Select Type</option>
+                                <option value="full-rim">Full Rim</option>
+                                <option value="half-rim">Half Rim</option>
+                                <option value="rimless">Rimless</option>
+                                <option value="__add_new__">+ Add New Frame Type</option>
+                            </select>
+                            <div id="newFrameTypeInput">
+                                <input type="text" id="customFrameType" placeholder="Enter new frame type">
+                                <button type="button" id="saveFrameTypeBtn" class="btn-primary"><i class="fas fa-check"></i></button>
+                                <button type="button" id="cancelFrameTypeBtn" class="btn-secondary"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>HSN Code</label>
+                        <label><i class="fas fa-barcode"></i> HSN Code</label>
                         <input type="text" name="hsn" placeholder="e.g., 9004" required>
                     </div>
                 </div>
 
+                <!-- Pricing Section -->
+                <div class="form-section-title"><i class="fas fa-rupee-sign"></i> Pricing & Tax</div>
+
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Sell Price (₹)</label>
-                        <input type="number" name="price" step="0.01" required>
+                        <label><i class="fas fa-tag"></i> Sell Price (₹)</label>
+                        <input type="number" name="price" step="0.01" placeholder="0.00" required>
                     </div>
                     <div class="form-group">
-                        <label>Purchase Price (₹)</label>
-                        <input type="number" name="originalPrice" step="0.01" required>
+                        <label><i class="fas fa-shopping-cart"></i> Purchase Price (₹)</label>
+                        <input type="number" name="originalPrice" step="0.01" placeholder="0.00" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>GST Rate (%)</label>
+                        <label><i class="fas fa-percent"></i> GST Rate</label>
                         <select name="gst" required>
                             <option value="">Select GST %</option>
                             <option value="0">0%</option>
@@ -766,37 +801,34 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                         </select>
                     </div>
                     <div class="form-group">
-                        <!-- Empty column for alignment -->
+                        <label><i class="fas fa-palette"></i> Color</label>
+                        <input type="text" name="color" placeholder="e.g., Black, Gold">
                     </div>
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Stock Quantity</label>
-                        <input type="number" name="stock" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Color</label>
-                        <input type="text" name="color">
-                    </div>
-                </div>
+                <!-- Inventory Section -->
+                <div class="form-section-title"><i class="fas fa-warehouse"></i> Inventory</div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Status</label>
+                        <label><i class="fas fa-cubes"></i> Stock Quantity</label>
+                        <input type="number" name="stock" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Status</label>
                         <select name="status">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <!-- Empty column for alignment -->
-                    </div>
                 </div>
 
+                <!-- Media Section -->
+                <div class="form-section-title"><i class="fas fa-images"></i> Product Images</div>
+
                 <div class="form-group">
-                    <label>Product Image</label>
                     <div class="image-upload-section">
+                        <p style="color: #666; margin-bottom: 12px; font-size: 13px;"><i class="fas fa-info-circle"></i> Upload up to 4 product images. First image will be the main display image.</p>
                         <div class="upload-options">
                             <button type="button" class="btn-secondary" id="openCameraBtn">
                                 <i class="fas fa-camera"></i> Take Photo
@@ -804,31 +836,29 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                             <button type="button" class="btn-secondary" id="uploadImageBtn">
                                 <i class="fas fa-upload"></i> Upload Image
                             </button>
-                            <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+                            <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
                         </div>
-                        <input type="text" name="image" id="imageUrlInput" placeholder="Or paste image URL/path" style="margin-top: 10px;">
+                        <input type="text" name="image" id="imageUrlInput" placeholder="Or paste image URL/path" style="margin-top: 12px;">
                         
                         <!-- Camera Preview -->
-                        <div id="cameraSection" style="display: none; margin-top: 15px;">
-                            <video id="cameraPreview" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 8px;"></video>
-                            <div style="margin-top: 10px;">
+                        <div id="cameraSection">
+                            <video id="cameraPreview" autoplay playsinline></video>
+                            <div style="margin-top: 12px;">
                                 <button type="button" class="btn-primary" id="capturePhotoBtn">
-                                    <i class="fas fa-camera"></i> Capture Photo
+                                    <i class="fas fa-camera"></i> Capture
                                 </button>
                                 <button type="button" class="btn-secondary" id="closeCameraBtn">
-                                    <i class="fas fa-times"></i> Close Camera
+                                    <i class="fas fa-times"></i> Close
                                 </button>
                             </div>
                         </div>
                         
-                        <!-- Image Preview -->
-                        <div id="imagePreview" style="display: none; margin-top: 15px;">
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
-                                <div id="previewImage" style="position: relative; display: flex; align-items: center; justify-content: center; min-height: 100px; border: 2px dashed #ddd; border-radius: 8px; background: #f9f9f9;">
-                                    <!-- Photos will be inserted here by JavaScript -->
-                                </div>
+                        <!-- Image Preview Grid -->
+                        <div id="imagePreview">
+                            <div id="previewImage">
+                                <!-- Photos will be inserted here by JavaScript -->
                             </div>
-                            <button type="button" class="btn-secondary" id="removeImageBtn" style="margin-top: 10px;">
+                            <button type="button" class="btn-secondary" id="removeImageBtn" style="margin-top: 12px;">
                                 <i class="fas fa-trash"></i> Clear All Photos
                             </button>
                         </div>
@@ -837,8 +867,10 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                     </div>
                 </div>
 
+                <!-- Video Section -->
+                <div class="form-section-title"><i class="fas fa-video"></i> Product Video (Optional)</div>
+
                 <div class="form-group">
-                    <label>Product Video (Optional)</label>
                     <div class="video-upload-section">
                         <div class="upload-options">
                             <button type="button" class="btn-secondary" id="recordVideoBtn">
@@ -849,12 +881,12 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                             </button>
                             <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
                         </div>
-                        <input type="url" name="video" id="videoUrlInput" placeholder="Or paste video URL (YouTube, Vimeo, etc.)" style="margin-top: 10px;">
+                        <input type="url" name="video" id="videoUrlInput" placeholder="Or paste video URL (YouTube, Vimeo, etc.)" style="margin-top: 12px;">
                         
                         <!-- Video Recording Section -->
-                        <div id="videoRecordSection" style="display: none; margin-top: 15px;">
-                            <video id="videoRecordPreview" autoplay playsinline muted style="width: 100%; max-width: 400px; border-radius: 8px;"></video>
-                            <div style="margin-top: 10px;">
+                        <div id="videoRecordSection">
+                            <video id="videoRecordPreview" autoplay playsinline muted></video>
+                            <div style="margin-top: 12px;">
                                 <button type="button" class="btn-primary" id="startRecordingBtn">
                                     <i class="fas fa-circle"></i> Start Recording
                                 </button>
@@ -871,18 +903,20 @@ $adminRole = $_SESSION['admin_role'] ?? 'admin';
                         </div>
                         
                         <!-- Video Preview -->
-                        <div id="videoPreview" style="display: none; margin-top: 15px;">
-                            <video id="previewVideo" controls style="width: 100%; max-width: 400px; border-radius: 8px;"></video>
-                            <button type="button" class="btn-secondary" id="removeVideoBtn" style="margin-top: 10px;">
+                        <div id="videoPreview">
+                            <video id="previewVideo" controls></video>
+                            <button type="button" class="btn-secondary" id="removeVideoBtn" style="margin-top: 12px;">
                                 <i class="fas fa-trash"></i> Remove Video
                             </button>
                         </div>
                     </div>
                 </div>
 
+                <!-- Description Section -->
+                <div class="form-section-title"><i class="fas fa-align-left"></i> Description</div>
+
                 <div class="form-group">
-                    <label>Description</label>
-                    <textarea name="description" rows="4"></textarea>
+                    <textarea name="description" rows="4" placeholder="Enter product description..."></textarea>
                 </div>
 
                 <div class="modal-footer">

@@ -76,40 +76,75 @@ function getPurchase($id) {
 function createPurchase() {
     $data = json_decode(file_get_contents('php://input'), true);
 
-    if (!$data || !isset($data['supplier']) || !isset($data['product_name']) || !isset($data['quantity'])) {
+    if (!$data || !isset($data['supplier'])) {
         http_response_code(400);
         echo json_encode(['error' => 'Missing required fields']);
         return;
     }
 
-    $sql = "INSERT INTO purchases (
-        supplier, supplier_phone, supplier_email, city,
-        product_name, category, quantity,
-        cost_price, selling_price,
-        gst_percentage, gst_amount, total_amount,
-        payment_method, invoice_number,
-        purchase_date, status, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    // Check if this is new multi-product format or old single product format
+    if (isset($data['items'])) {
+        // New multi-product format
+        $sql = "INSERT INTO purchases (
+            supplier, supplier_phone, city,
+            items, total_items,
+            subtotal, gst_amount, total_amount,
+            payment_method, invoice_number,
+            purchase_date, status, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    $params = [
-        $data['supplier'],
-        $data['supplier_phone'] ?? null,
-        $data['supplier_email'] ?? null,
-        $data['city'] ?? null,
-        $data['product_name'],
-        $data['category'] ?? null,
-        $data['quantity'],
-        $data['cost_price'] ?? 0,
-        $data['selling_price'] ?? 0,
-        $data['gst_percentage'] ?? 0,
-        $data['gst_amount'] ?? 0,
-        $data['total_amount'] ?? 0,
-        $data['payment_method'] ?? 'Cash',
-        $data['invoice_number'] ?? null,
-        $data['purchase_date'] ?? date('Y-m-d'),
-        $data['status'] ?? 'pending',
-        $data['notes'] ?? null
-    ];
+        $params = [
+            $data['supplier'],
+            $data['supplier_phone'] ?? null,
+            $data['city'] ?? null,
+            $data['items'],  // JSON string of items
+            $data['total_items'] ?? 0,
+            $data['subtotal'] ?? 0,
+            $data['total_gst'] ?? 0,  // Maps to gst_amount column
+            $data['total_amount'] ?? 0,
+            $data['payment_method'] ?? 'Cash',
+            $data['invoice_number'] ?? null,
+            $data['purchase_date'] ?? date('Y-m-d'),
+            $data['status'] ?? 'pending',
+            $data['notes'] ?? null
+        ];
+    } else {
+        // Old single product format for backward compatibility
+        if (!isset($data['product_name']) || !isset($data['quantity'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing required fields']);
+            return;
+        }
+
+        $sql = "INSERT INTO purchases (
+            supplier, supplier_phone, supplier_email, city,
+            product_name, category, quantity,
+            cost_price, selling_price,
+            gst_percentage, gst_amount, total_amount,
+            payment_method, invoice_number,
+            purchase_date, status, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        $params = [
+            $data['supplier'],
+            $data['supplier_phone'] ?? null,
+            $data['supplier_email'] ?? null,
+            $data['city'] ?? null,
+            $data['product_name'],
+            $data['category'] ?? null,
+            $data['quantity'],
+            $data['cost_price'] ?? 0,
+            $data['selling_price'] ?? 0,
+            $data['gst_percentage'] ?? 0,
+            $data['gst_amount'] ?? 0,
+            $data['total_amount'] ?? 0,
+            $data['payment_method'] ?? 'Cash',
+            $data['invoice_number'] ?? null,
+            $data['purchase_date'] ?? date('Y-m-d'),
+            $data['status'] ?? 'pending',
+            $data['notes'] ?? null
+        ];
+    }
 
     $result = executeQuery($sql, $params);
 

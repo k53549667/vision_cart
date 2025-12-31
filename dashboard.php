@@ -1,3 +1,11 @@
+<?php
+// Server-side session check
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    // If not logged in via PHP session, let JavaScript handle it
+    // This is a fallback - JavaScript auth check should work
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -325,6 +333,87 @@
         .order-detail-value {
             color: #333;
             font-weight: 600;
+        }
+
+        /* Order Items Styles */
+        .order-items {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #e0e0e0;
+        }
+
+        .order-items-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .order-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .order-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .order-item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .order-item-details {
+            flex: 1;
+        }
+
+        .order-item-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .order-item-qty {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .order-item-price {
+            font-weight: 600;
+            color: #00bac7;
+            font-size: 14px;
+        }
+
+        /* Order Shipping Styles */
+        .order-shipping {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #e0e0e0;
+        }
+
+        .order-shipping-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .order-shipping-address {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
         }
 
         .addresses-grid {
@@ -962,7 +1051,7 @@
     <!-- Scripts -->
     <script src="auth.js"></script>
     <script>
-        const authManager = new AuthManager();
+        // authManager is already created in auth.js
         let currentUser = null;
 
         // Initialize dashboard
@@ -1180,40 +1269,80 @@
         // Load user orders
         async function loadUserOrders() {
             try {
+                console.log('🔄 Loading user orders...');
                 const response = await fetch('api_users.php?action=orders', {
                     credentials: 'include'
                 });
                 const data = await response.json();
+                console.log('📦 Orders API response:', data);
 
                 const ordersList = document.getElementById('ordersList');
 
-                if (data.success && data.orders.length > 0) {
-                    ordersList.innerHTML = data.orders.map(order => `
-                        <div class="order-card">
-                            <div class="order-header">
-                                <div class="order-id">Order #${order.id}</div>
-                                <div class="order-status status-${order.status}">${order.status.toUpperCase()}</div>
+                if (data.success && data.orders && data.orders.length > 0) {
+                    console.log('✅ Found ' + data.orders.length + ' orders');
+                    ordersList.innerHTML = data.orders.map(order => {
+                        // Generate items HTML
+                        let itemsHTML = '';
+                        if (order.items && order.items.length > 0) {
+                            itemsHTML = `
+                                <div class="order-items">
+                                    <div class="order-items-title">Order Items:</div>
+                                    ${order.items.map(item => {
+                                        // Get first image from comma-separated list
+                                        let itemImage = 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=100&h=100&fit=crop';
+                                        if (item.product_image) {
+                                            const images = item.product_image.split(',');
+                                            itemImage = images[0].trim();
+                                        }
+                                        return `
+                                            <div class="order-item">
+                                                <img src="${itemImage}" alt="${item.product_name}" class="order-item-image" onerror="this.src='https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=100&h=100&fit=crop'">
+                                                <div class="order-item-details">
+                                                    <div class="order-item-name">${item.product_name}</div>
+                                                    <div class="order-item-qty">Qty: ${item.quantity}</div>
+                                                    <div class="order-item-price">₹${parseFloat(item.price).toFixed(2)}</div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `;
+                        }
+                        
+                        return `
+                            <div class="order-card">
+                                <div class="order-header">
+                                    <div class="order-id">Order #${order.id}</div>
+                                    <div class="order-status status-${order.status}">${order.status.toUpperCase()}</div>
+                                </div>
+                                <div class="order-details">
+                                    <div class="order-detail-item">
+                                        <div class="order-detail-label">Date</div>
+                                        <div class="order-detail-value">${new Date(order.created_at).toLocaleDateString()}</div>
+                                    </div>
+                                    <div class="order-detail-item">
+                                        <div class="order-detail-label">Items</div>
+                                        <div class="order-detail-value">${order.item_count || order.items?.length || 0} item(s)</div>
+                                    </div>
+                                    <div class="order-detail-item">
+                                        <div class="order-detail-label">Total Amount</div>
+                                        <div class="order-detail-value">₹${parseFloat(order.total_amount).toFixed(2)}</div>
+                                    </div>
+                                    <div class="order-detail-item">
+                                        <div class="order-detail-label">Payment</div>
+                                        <div class="order-detail-value">${order.payment_method || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                ${itemsHTML}
+                                ${order.shipping_address ? `
+                                    <div class="order-shipping">
+                                        <div class="order-shipping-title">Shipping Address:</div>
+                                        <div class="order-shipping-address">${order.shipping_address.replace(/\n/g, '<br>')}</div>
+                                    </div>
+                                ` : ''}
                             </div>
-                            <div class="order-details">
-                                <div class="order-detail-item">
-                                    <div class="order-detail-label">Date</div>
-                                    <div class="order-detail-value">${new Date(order.created_at).toLocaleDateString()}</div>
-                                </div>
-                                <div class="order-detail-item">
-                                    <div class="order-detail-label">Items</div>
-                                    <div class="order-detail-value">${order.item_count} item(s)</div>
-                                </div>
-                                <div class="order-detail-item">
-                                    <div class="order-detail-label">Total Amount</div>
-                                    <div class="order-detail-value">₹${parseFloat(order.total_amount).toFixed(2)}</div>
-                                </div>
-                                <div class="order-detail-item">
-                                    <div class="order-detail-label">Payment Method</div>
-                                    <div class="order-detail-value">${order.payment_method || 'N/A'}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     ordersList.innerHTML = `
                         <div class="empty-state">

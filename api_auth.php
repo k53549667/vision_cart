@@ -6,7 +6,13 @@
 
 session_start();
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+// Handle CORS - allow same origin and localhost
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+if (strpos($origin, 'localhost') !== false || $origin === '') {
+    header('Access-Control-Allow-Origin: ' . ($origin ?: 'http://localhost'));
+} else {
+    header('Access-Control-Allow-Origin: http://localhost');
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');

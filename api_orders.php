@@ -6,7 +6,13 @@ error_reporting(E_ALL);
 session_start();
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+// Handle CORS - allow same origin and localhost
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+if (strpos($origin, 'localhost') !== false || $origin === '') {
+    header('Access-Control-Allow-Origin: ' . ($origin ?: '*'));
+} else {
+    header('Access-Control-Allow-Origin: *');
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');
@@ -100,8 +106,13 @@ function createOrder() {
     // Generate order ID
     $order_id = 'ORD-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
 
-    // Get user_id from session if logged in
+    // Get user_id from session if logged in, or from request data
     $user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+    
+    // If not in session but provided in request data, use that
+    if ($user_id === null && isset($data['user_id']) && is_numeric($data['user_id'])) {
+        $user_id = (int)$data['user_id'];
+    }
 
     // Handle customer_id - if it's an email or non-numeric, set to NULL
     $customer_id = null;

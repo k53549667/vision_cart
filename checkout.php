@@ -721,7 +721,7 @@
                             <span style="color: #4CAF50; font-weight: 600;">FREE</span>
                         </div>
                         <div class="summary-row">
-                            <span>Tax (GST 18%)</span>
+                            <span id="taxLabel">Tax (GST)</span>
                             <span id="tax">₹0</span>
                         </div>
                         <div class="summary-row total">
@@ -747,12 +747,45 @@
 
     <script src="script.js"></script>
     <script src="payment.js"></script>
+    <script src="auth.js"></script>
     <script>
         // Global cart data for checkout
         let checkoutCart = [];
+        let currentUser = null;
+        
+        // Check if user is logged in
+        async function checkUserAuth() {
+            try {
+                const response = await fetch('api_auth.php?action=check', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (data.success && data.authenticated) {
+                    currentUser = {
+                        id: data.user_id,
+                        email: data.user_email,
+                        name: data.user_name
+                    };
+                    console.log('✅ User logged in:', currentUser);
+                    
+                    // Pre-fill form with user data
+                    if (currentUser.name) {
+                        document.getElementById('fullName').value = currentUser.name;
+                    }
+                    if (currentUser.email) {
+                        document.getElementById('email').value = currentUser.email;
+                    }
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+            }
+        }
         
         // Load cart and display
         async function loadCheckoutData() {
+            // First check user authentication
+            await checkUserAuth();
+            
             try {
                 // Fetch cart from API
                 const response = await fetch('api_cart.php?action=list', {
@@ -779,17 +812,27 @@
                 }
 
                 let subtotal = 0;
-                let cartHTML = '';
+                // Helper function to get first image from comma-separated list
+        function getFirstImage(imageStr) {
+            if (!imageStr) return null;
+            const images = imageStr.split(',').map(img => img.trim()).filter(img => img);
+            return images.length > 0 ? images[0] : null;
+        }
+        
+        let cartHTML = '';
 
                 checkoutCart.forEach(item => {
                     const itemPrice = parseFloat(item.price);
                     const itemQty = parseInt(item.quantity);
                     const itemTotal = itemPrice * itemQty;
                     subtotal += itemTotal;
+                    
+                    // Get first image from comma-separated list
+                    const displayImage = getFirstImage(item.image) || item.image || item.product_image || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop';
 
                     cartHTML += `
                         <div class="cart-item">
-                            <img src="${item.image || item.product_image}" alt="${item.name || item.product_name}">
+                            <img src="${displayImage}" alt="${item.name || item.product_name}" onerror="this.src='https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop'">
                             <div class="item-info">
                                 <div class="item-name">${item.name || item.product_name}</div>
                                 <div class="item-qty">Qty: ${itemQty}</div>
@@ -801,8 +844,25 @@
 
                 document.getElementById('cartItems').innerHTML = cartHTML;
 
-                const tax = Math.round(subtotal * 0.18);
+                // Calculate GST from each item's actual GST percentage from database
+                const gstRates = new Set();
+                const tax = checkoutCart.reduce((sum, item) => {
+                    const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+                    const gstPercent = parseFloat(item.gst) || 18; // Use product's GST or default to 18%
+                    gstRates.add(gstPercent);
+                    return sum + Math.round(itemTotal * gstPercent / 100);
+                }, 0);
                 const total = subtotal + tax;
+
+                // Update GST label to show percentage(s)
+                const gstRatesArray = Array.from(gstRates).sort((a, b) => a - b);
+                let gstLabel = 'Tax (GST ';
+                if (gstRatesArray.length === 1) {
+                    gstLabel += gstRatesArray[0] + '%)';
+                } else {
+                    gstLabel += gstRatesArray.join('%, ') + '%)';
+                }
+                document.getElementById('taxLabel').textContent = gstLabel;
 
                 document.getElementById('subtotal').textContent = '₹' + subtotal.toLocaleString();
                 document.getElementById('tax').textContent = '₹' + tax.toLocaleString();
@@ -927,26 +987,38 @@
             }
             
             const subtotal = checkoutCart.reduce((sum, item) => sum + (parseFloat(item.price) * parseInt(item.quantity)), 0);
-            const tax = Math.round(subtotal * 0.18);
+            // Calculate GST from each item's actual GST percentage from database
+            const tax = checkoutCart.reduce((sum, item) => {
+                const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+                const gstPercent = parseFloat(item.gst) || 18;
+                return sum + Math.round(itemTotal * gstPercent / 100);
+            }, 0);
             const total = subtotal + tax;
 
             // Prepare shipping address
             const shippingAddress = `${name}\n${phone}\n${address1}\n${document.getElementById('address2').value || ''}\n${city}, ${state} - ${pincode}`.trim();
             
-            // Prepare order items for API
-            const orderItems = checkoutCart.map(item => ({
-                product_id: item.id,
-                product_name: item.name,
-                quantity: parseInt(item.quantity),
-                price: parseFloat(item.price),
-                gst: Math.round(parseFloat(item.price) * parseInt(item.quantity) * 0.18),
-                total: parseFloat(item.price) * parseInt(item.quantity) + Math.round(parseFloat(item.price) * parseInt(item.quantity) * 0.18)
-            }));
+            // Prepare order items for API with actual GST from database
+            const orderItems = checkoutCart.map(item => {
+                const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
+                const gstPercent = parseFloat(item.gst) || 18;
+                const gstAmount = Math.round(itemTotal * gstPercent / 100);
+                return {
+                    product_id: item.id,
+                    product_name: item.name,
+                    quantity: parseInt(item.quantity),
+                    price: parseFloat(item.price),
+                    gst_percent: gstPercent,
+                    gst: gstAmount,
+                    total: itemTotal + gstAmount
+                };
+            });
 
             // Prepare order data for API
             const orderData = {
                 customer_name: name,
-                // customer_id will be set to NULL in API if not numeric
+                user_id: currentUser ? currentUser.id : null,
+                customer_email: email,
                 total_amount: total,
                 order_date: new Date().toISOString().split('T')[0],
                 status: paymentMethod === 'cod' ? 'pending' : 'paid',
