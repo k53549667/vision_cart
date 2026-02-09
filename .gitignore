@@ -1,8 +1,17 @@
+# Environment variables (IMPORTANT - contains sensitive data)
+.env
+.env.local
+.env.*.local
+
 # Nested git repository
 vision_cart/
 
 # Videos folder (large files)
 videos/
+
+# Uploads folder (user generated content)
+uploads/
+assets/uploads/
 
 # IDE/Editor files
 .vscode/
@@ -16,3 +25,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Database dumps (optional - uncomment if you don't want to track)
+# *.sql

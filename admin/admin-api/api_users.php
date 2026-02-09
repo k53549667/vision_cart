@@ -1,0 +1,563 @@
+<?php
+/**
+ * VisionKart User Management API (Admin)
+ * Handles user profile, addresses, and preferences
+ */
+
+session_start();
+header('Content-Type: application/json');
+
+// Secure CORS - only allow specific origins
+$allowed_origins = ['http://localhost', 'http://127.0.0.1'];
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+if (in_array($origin, $allowed_origins) || strpos($origin, 'localhost') !== false) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    header('Access-Control-Allow-Origin: http://localhost');
+}
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// Use centralized config
+require_once __DIR__ . '/../../config.php';
+
+// Create PDO connection using centralized config
+try {
+    $conn = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    http_response_code(500);
+    error_log('Database connection failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Database connection failed. Please try again later.']);
+    exit();
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+$action = isset($_GET['action']) ? $_GET['action'] : '';
+
+// Check if user is authenticated for most operations
+function requireAuth() {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Authentication required']);
+        exit();
+    }
+}
+
+switch ($method) {
+    case 'GET':
+        if ($action === 'check-session') {
+            // This doesn't require auth - just check if session exists
+            echo json_encode([
+                'success' => true,
+                'authenticated' => isset($_SESSION['user_id']),
+                'user_id' => $_SESSION['user_id'] ?? null
+            ]);
+            exit();
+        }
+        requireAuth();
+        if ($action === 'profile') {
+            getProfile();
+        } elseif ($action === 'addresses') {
+            getAddresses();
+        } elseif ($action === 'address' && isset($_GET['id'])) {
+            getAddress($_GET['id']);
+        } elseif ($action === 'orders') {
+            getUserOrders();
+        } elseif ($action === 'stats') {
+            getUserStats();
+        } else {
+            getProfile();
+        }
+        break;
+
+    case 'POST':
+        requireAuth();
+        if ($action === 'update-profile') {
+            updateProfile();
+        } elseif ($action === 'add-address') {
+            addAddress();
+        } elseif ($action === 'update-address' && isset($_GET['id'])) {
+            updateAddress($_GET['id']);
+        } elseif ($action === 'set-default-address' && isset($_GET['id'])) {
+            setDefaultAddress($_GET['id']);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+        }
+        break;
+
+    case 'DELETE':
+        requireAuth();
+        if ($action === 'address' && isset($_GET['id'])) {
+            deleteAddress($_GET['id']);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+        }
+        break;
+
+    default:
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+        break;
+}
+
+/**
+ * Get user profile
+ */
+function getProfile() {
+    global $conn;
+    
+    try {
+        $stmt = $conn->prepare("SELECT id, email, first_name, last_name, phone, role, email_verified, 
+                               created_at, last_login, status 
+                               FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user) {
+            echo json_encode([
+                'success' => true,
+                'user' => [
+                    'id' => $user['id'],
+                    'email' => $user['email'],
+                    'first_name' => $user['first_name'],
+                    'last_name' => $user['last_name'],
+                    'full_name' => $user['first_name'] . ' ' . $user['last_name'],
+                    'phone' => $user['phone'],
+                    'role' => $user['role'],
+                    'email_verified' => (bool)$user['email_verified'],
+                    'status' => $user['status'],
+                    'created_at' => $user['created_at'],
+                    'last_login' => $user['last_login']
+                ]
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'User not found']);
+        }
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Update user profile
+ */
+function updateProfile() {
+    global $conn;
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    $allowedFields = ['first_name', 'last_name', 'phone'];
+    $updates = [];
+    $values = [];
+    
+    foreach ($allowedFields as $field) {
+        if (isset($data[$field])) {
+            $updates[] = "$field = ?";
+            $values[] = trim($data[$field]);
+        }
+    }
+    
+    if (empty($updates)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'No fields to update']);
+        return;
+    }
+    
+    $values[] = $_SESSION['user_id'];
+    
+    try {
+        $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($values);
+        
+        // Update session if name changed
+        if (isset($data['first_name']) || isset($data['last_name'])) {
+            $stmt = $conn->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Profile updated successfully']);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Get all user addresses
+ */
+function getAddresses() {
+    global $conn;
+    
+    try {
+        $stmt = $conn->prepare("SELECT * FROM user_addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC");
+        $stmt->execute([$_SESSION['user_id']]);
+        $addresses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'addresses' => $addresses
+        ]);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Get single address
+ */
+function getAddress($addressId) {
+    global $conn;
+    
+    try {
+        $stmt = $conn->prepare("SELECT * FROM user_addresses WHERE id = ? AND user_id = ?");
+        $stmt->execute([$addressId, $_SESSION['user_id']]);
+        $address = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($address) {
+            echo json_encode([
+                'success' => true,
+                'address' => $address
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Address not found']);
+        }
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Add new address
+ */
+function addAddress() {
+    global $conn;
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    $required = ['full_name', 'phone', 'address_line1', 'city', 'state', 'postal_code'];
+    foreach ($required as $field) {
+        if (!isset($data[$field]) || empty(trim($data[$field]))) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => ucfirst(str_replace('_', ' ', $field)) . ' is required']);
+            return;
+        }
+    }
+    
+    try {
+        // If this is first address or marked as default, set it as default
+        $isDefault = isset($data['is_default']) ? (int)$data['is_default'] : 0;
+        
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM user_addresses WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $addressCount = $stmt->fetchColumn();
+        
+        if ($addressCount == 0) {
+            $isDefault = 1;
+        }
+        
+        // If setting as default, unset other defaults
+        if ($isDefault) {
+            $stmt = $conn->prepare("UPDATE user_addresses SET is_default = 0 WHERE user_id = ?");
+            $stmt->execute([$_SESSION['user_id']]);
+        }
+        
+        $stmt = $conn->prepare("INSERT INTO user_addresses 
+                               (user_id, address_type, full_name, phone, address_line1, address_line2, 
+                                city, state, postal_code, country, is_default) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        
+        $stmt->execute([
+            $_SESSION['user_id'],
+            $data['address_type'] ?? 'home',
+            $data['full_name'],
+            $data['phone'],
+            $data['address_line1'],
+            $data['address_line2'] ?? null,
+            $data['city'],
+            $data['state'],
+            $data['postal_code'],
+            $data['country'] ?? 'India',
+            $isDefault
+        ]);
+        
+        $addressId = $conn->lastInsertId();
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Address added successfully',
+            'address_id' => $addressId
+        ]);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Update address
+ */
+function updateAddress($addressId) {
+    global $conn;
+    
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    try {
+        // Verify ownership
+        $stmt = $conn->prepare("SELECT id FROM user_addresses WHERE id = ? AND user_id = ?");
+        $stmt->execute([$addressId, $_SESSION['user_id']]);
+        
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Address not found']);
+            return;
+        }
+        
+        $allowedFields = ['address_type', 'full_name', 'phone', 'address_line1', 'address_line2', 
+                         'city', 'state', 'postal_code', 'country'];
+        $updates = [];
+        $values = [];
+        
+        foreach ($allowedFields as $field) {
+            if (isset($data[$field])) {
+                $updates[] = "$field = ?";
+                $values[] = $data[$field];
+            }
+        }
+        
+        if (empty($updates)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'No fields to update']);
+            return;
+        }
+        
+        $values[] = $addressId;
+        $values[] = $_SESSION['user_id'];
+        
+        $sql = "UPDATE user_addresses SET " . implode(', ', $updates) . " WHERE id = ? AND user_id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($values);
+        
+        echo json_encode(['success' => true, 'message' => 'Address updated successfully']);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Set default address
+ */
+function setDefaultAddress($addressId) {
+    global $conn;
+    
+    try {
+        // Verify ownership
+        $stmt = $conn->prepare("SELECT id FROM user_addresses WHERE id = ? AND user_id = ?");
+        $stmt->execute([$addressId, $_SESSION['user_id']]);
+        
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Address not found']);
+            return;
+        }
+        
+        // Unset all defaults
+        $stmt = $conn->prepare("UPDATE user_addresses SET is_default = 0 WHERE user_id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        
+        // Set new default
+        $stmt = $conn->prepare("UPDATE user_addresses SET is_default = 1 WHERE id = ? AND user_id = ?");
+        $stmt->execute([$addressId, $_SESSION['user_id']]);
+        
+        echo json_encode(['success' => true, 'message' => 'Default address updated']);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Delete address
+ */
+function deleteAddress($addressId) {
+    global $conn;
+    
+    try {
+        $stmt = $conn->prepare("DELETE FROM user_addresses WHERE id = ? AND user_id = ?");
+        $stmt->execute([$addressId, $_SESSION['user_id']]);
+        
+        if ($stmt->rowCount() > 0) {
+            echo json_encode(['success' => true, 'message' => 'Address deleted successfully']);
+        } else {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Address not found']);
+        }
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Get user orders
+ */
+function getUserOrders() {
+    global $conn;
+    
+    // Debug: Log session info
+    error_log("getUserOrders called - Session user_id: " . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'NOT SET'));
+    
+    if (!isset($_SESSION['user_id'])) {
+        echo json_encode(['success' => false, 'message' => 'Not authenticated', 'orders' => []]);
+        return;
+    }
+    
+    $userId = $_SESSION['user_id'];
+    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+    $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+    
+    try {
+        // Get user info for matching orders by customer_name as fallback
+        $userStmt = $conn->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
+        $userStmt->execute([$userId]);
+        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+        
+        $fullName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : '';
+        $email = $user ? $user['email'] : '';
+        
+        error_log("getUserOrders - User: $fullName ($email), ID: $userId");
+        
+        // Get orders by user_id OR by matching customer_name/email (for orders placed before user_id was saved)
+        $sql = "SELECT o.*, COUNT(oi.id) as item_count 
+                FROM orders o 
+                LEFT JOIN order_items oi ON o.id = oi.order_id 
+                WHERE o.user_id = ? 
+                   OR (o.user_id IS NULL AND (o.customer_name = ? OR o.customer_name = ?))
+                GROUP BY o.id 
+                ORDER BY o.created_at DESC 
+                LIMIT $limit OFFSET $offset";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$userId, $fullName, $email]);
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Fetch items for each order
+        foreach ($orders as &$order) {
+            $itemStmt = $conn->prepare("SELECT oi.*, p.image as product_image 
+                                        FROM order_items oi 
+                                        LEFT JOIN products p ON oi.product_id = p.id 
+                                        WHERE oi.order_id = ?");
+            $itemStmt->execute([$order['id']]);
+            $order['items'] = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        error_log("getUserOrders - Found " . count($orders) . " orders");
+        
+        // Get total count
+        $stmt = $conn->prepare("SELECT COUNT(DISTINCT o.id) FROM orders o 
+                               WHERE o.user_id = ? 
+                                  OR (o.user_id IS NULL AND (o.customer_name = ? OR o.customer_name = ?))");
+        $stmt->execute([$userId, $fullName, $email]);
+        $totalCount = $stmt->fetchColumn();
+        
+        echo json_encode([
+            'success' => true,
+            'orders' => $orders,
+            'total' => (int)$totalCount,
+            'limit' => $limit,
+            'offset' => $offset,
+            'debug' => [
+                'user_id' => $userId,
+                'full_name' => $fullName,
+                'email' => $email
+            ]
+        ]);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+
+/**
+ * Get user statistics
+ */
+function getUserStats() {
+    global $conn;
+    
+    try {
+        // Get user info for matching orders by customer_name as fallback
+        $userStmt = $conn->prepare("SELECT email, first_name, last_name FROM users WHERE id = ?");
+        $userStmt->execute([$_SESSION['user_id']]);
+        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+        
+        $fullName = $user ? trim($user['first_name'] . ' ' . $user['last_name']) : '';
+        $email = $user ? $user['email'] : '';
+        
+        // Total orders
+        $stmt = $conn->prepare("SELECT COUNT(DISTINCT id) FROM orders 
+                               WHERE user_id = ? 
+                                  OR (user_id IS NULL AND (customer_name = ? OR customer_name = ?))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
+        $totalOrders = $stmt->fetchColumn();
+        
+        // Total spent
+        $stmt = $conn->prepare("SELECT SUM(total_amount) FROM orders 
+                               WHERE status != 'cancelled' AND 
+                                  (user_id = ? OR (user_id IS NULL AND (customer_name = ? OR customer_name = ?)))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
+        $totalSpent = $stmt->fetchColumn() ?? 0;
+        
+        // Pending orders
+        $stmt = $conn->prepare("SELECT COUNT(DISTINCT id) FROM orders 
+                               WHERE status IN ('pending', 'processing') AND 
+                                  (user_id = ? OR (user_id IS NULL AND (customer_name = ? OR customer_name = ?)))");
+        $stmt->execute([$_SESSION['user_id'], $fullName, $email]);
+        $pendingOrders = $stmt->fetchColumn();
+        
+        // Wishlist count
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM wishlist WHERE session_id IN 
+                               (SELECT session_id FROM user_sessions WHERE user_id = ?)");
+        $stmt->execute([$_SESSION['user_id']]);
+        $wishlistCount = $stmt->fetchColumn();
+        
+        echo json_encode([
+            'success' => true,
+            'stats' => [
+                'total_orders' => (int)$totalOrders,
+                'total_spent' => (float)$totalSpent,
+                'pending_orders' => (int)$pendingOrders,
+                'wishlist_count' => (int)$wishlistCount
+            ]
+        ]);
+        
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'A database error occurred. Please try again later.']);
+    }
+}
+?>

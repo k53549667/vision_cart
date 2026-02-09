@@ -1,10 +1,17 @@
+<?php
+require_once 'includes/csrf.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php echo csrf_meta(); ?>
     <title>VisionKart - Premium Eyewear & Sunglasses Online</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* User dropdown menu styles */
@@ -123,8 +130,8 @@
                     <div class="action-icons">
                         <a href="#" class="icon-link"><i class="fas fa-phone"></i></a>
                         <div class="auth-buttons" id="authContainer">
-                            <a href="login.php" class="icon-link" id="loginBtn" title="Login"><i class="fas fa-user"></i></a>
-                            <a href="login.php" class="signup-btn" id="signupBtn">Sign In</a>
+                            <a href="pages/login.php" class="icon-link" id="loginBtn" title="Login"><i class="fas fa-user"></i></a>
+                            <a href="pages/login.php" class="signup-btn" id="signupBtn">Sign In</a>
                         </div>
                         <a href="#" class="icon-link wishlist-icon" id="wishlistBtn">
                             <i class="fas fa-heart"></i>
@@ -220,7 +227,7 @@
             <p class="section-subtitle">Our hottest collections</p>
             
             <div class="category-grid">
-                <div class="category-card" onclick="window.location.href='category.php?shape=round'">
+                <div class="category-card" onclick="window.location.href='pages/category.php?shape=round'">
                     <div class="placeholder-img category-placeholder">
                         <div class="eyeglass-img">
                             <div class="eyeglass">
@@ -233,9 +240,9 @@
                         </div>
                     </div>
                     <h3>Round</h3>
-                    <a href="category.php?shape=round" class="explore-link">Explore</a>
+                    <a href="pages/category.php?shape=round" class="explore-link">Explore</a>
                 </div>
-                <div class="category-card" onclick="window.location.href='category.php?shape=cat-eye'">
+                <div class="category-card" onclick="window.location.href='pages/category.php?shape=cat-eye'">
                     <div class="placeholder-img category-placeholder">
                         <div class="eyeglass-img">
                             <div class="eyeglass">
@@ -248,9 +255,9 @@
                         </div>
                     </div>
                     <h3>Cat-Eye</h3>
-                    <a href="category.php?shape=cat-eye" class="explore-link">Explore</a>
+                    <a href="pages/category.php?shape=cat-eye" class="explore-link">Explore</a>
                 </div>
-                <div class="category-card" onclick="window.location.href='category.php?shape=clubmaster'">
+                <div class="category-card" onclick="window.location.href='pages/category.php?shape=clubmaster'">
                     <div class="placeholder-img category-placeholder">
                         <div class="eyeglass-img">
                             <div class="eyeglass">
@@ -263,9 +270,9 @@
                         </div>
                     </div>
                     <h3>Clubmaster</h3>
-                    <a href="category.php?shape=clubmaster" class="explore-link">Explore</a>
+                    <a href="pages/category.php?shape=clubmaster" class="explore-link">Explore</a>
                 </div>
-                <div class="category-card" onclick="window.location.href='category.php?shape=transparent'">
+                <div class="category-card" onclick="window.location.href='pages/category.php?shape=transparent'">
                     <div class="placeholder-img category-placeholder">
                         <div class="eyeglass-img">
                             <div class="eyeglass">
@@ -278,7 +285,7 @@
                         </div>
                     </div>
                     <h3>Transparent</h3>
-                    <a href="category.php?shape=transparent" class="explore-link">Explore</a>
+                    <a href="pages/category.php?shape=transparent" class="explore-link">Explore</a>
                 </div>
             </div>
         </div>
@@ -923,8 +930,8 @@
         </div>
     </div>
 
-    <script src="auth.js"></script>
-    <script src="script.js"></script>
-    <script src="payment.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/payment.js"></script>
 </body>
 </html>

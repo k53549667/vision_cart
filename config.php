@@ -1,9 +1,32 @@
 <?php
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'visionkart_db');
+/**
+ * VisionKart Database Configuration
+ * Uses environment variables for security
+ */
+
+// Load environment variables
+require_once __DIR__ . '/env_loader.php';
+
+// Database configuration from environment
+define('DB_HOST', env('DB_HOST', 'localhost'));
+define('DB_USER', env('DB_USER', 'root'));
+define('DB_PASS', env('DB_PASS', ''));
+define('DB_NAME', env('DB_NAME', 'snoptical'));
+
+// Application settings
+define('APP_ENV', env('APP_ENV', 'development'));
+define('APP_DEBUG', filter_var(env('APP_DEBUG', true), FILTER_VALIDATE_BOOLEAN));
+define('APP_URL', env('APP_URL', 'http://localhost/snoptical'));
+define('APP_SECRET', env('APP_SECRET_KEY', 'change_this_in_production'));
+
+// Payment settings (server-side only - never expose to client!)
+define('RAZORPAY_KEY_ID', env('RAZORPAY_KEY_ID', ''));
+define('RAZORPAY_KEY_SECRET', env('RAZORPAY_KEY_SECRET', ''));
+define('STRIPE_SECRET_KEY', env('STRIPE_SECRET_KEY', ''));
+
+// Rate limiting settings
+define('LOGIN_MAX_ATTEMPTS', (int)env('LOGIN_MAX_ATTEMPTS', 5));
+define('LOGIN_LOCKOUT_MINUTES', (int)env('LOGIN_LOCKOUT_MINUTES', 15));
 
 // Create connection
 function getDBConnection() {

@@ -4,10 +4,19 @@
  * Handles user sessions for cart and wishlist persistence
  */
 
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
-// Start session if not already started
+// Configure session cookie settings for security
 if (session_status() === PHP_SESSION_NONE) {
+    // Set secure session cookie parameters
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
     session_start();
 }
 
@@ -24,16 +33,26 @@ function getSessionId() {
     // Check if session_id is passed in request (for API calls)
     if (isset($_COOKIE['visionkart_session_id'])) {
         $sessionId = $_COOKIE['visionkart_session_id'];
-        $_SESSION['visionkart_session_id'] = $sessionId;
-        return $sessionId;
+        // Validate session ID format to prevent injection
+        if (preg_match('/^vk_[a-f0-9]{32}_[0-9]+$/', $sessionId)) {
+            $_SESSION['visionkart_session_id'] = $sessionId;
+            return $sessionId;
+        }
     }
     
     // Generate new session ID
     $sessionId = generateUniqueSessionId();
     $_SESSION['visionkart_session_id'] = $sessionId;
     
-    // Set cookie for 30 days
-    setcookie('visionkart_session_id', $sessionId, time() + (30 * 24 * 60 * 60), '/');
+    // Set cookie for 30 days with security flags (Fix Issue #18)
+    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    setcookie('visionkart_session_id', $sessionId, [
+        'expires' => time() + (30 * 24 * 60 * 60),
+        'path' => '/',
+        'httponly' => true,
+        'secure' => $isSecure,
+        'samesite' => 'Lax'
+    ]);
     
     // Store in database
     createSession($sessionId);
